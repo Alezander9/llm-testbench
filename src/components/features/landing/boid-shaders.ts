@@ -27,14 +27,17 @@ export const fragmentShaderVelocity = `
     uniform float cohesionDistance;
     uniform float freedomFactor;
     uniform vec3 predator;
+    uniform float centerAttractionStrength;
+    uniform float predatorRepulsionStrength;
+    uniform float predatorRepulsionRadius;
+    uniform float speedLimit;
+    uniform vec2 windowBounds; 
+    uniform float cameraZoom;
 
     const float width = resolution.x;
     const float height = resolution.y;
     const float PI = 3.141592653589793;
     const float PI_2 = PI * 2.0;
-    const float UPPER_BOUNDS = 400.0;
-    const float LOWER_BOUNDS = -UPPER_BOUNDS;
-    const float SPEED_LIMIT = 9.0;
 
     float zoneRadius;
     float zoneRadiusSquared;
@@ -52,7 +55,7 @@ export const fragmentShaderVelocity = `
         zoneRadiusSquared = zoneRadius * zoneRadius;
 
         vec2 uv = gl_FragCoord.xy / resolution.xy;
-        vec3 birdPosition, birdVelocity;
+        vec3 boidPosition, boidVelocity;
 
         vec3 selfPosition = texture2D(texturePosition, uv).xyz;
         vec3 selfVelocity = texture2D(textureVelocity, uv).xyz;
@@ -69,19 +72,19 @@ export const fragmentShaderVelocity = `
 
         vec3 velocity = selfVelocity;
 
-        float limit = SPEED_LIMIT;
+        float limit = speedLimit;
 
-        dir = predator * UPPER_BOUNDS - selfPosition;
+        dir = vec3(predator.x * windowBounds.x / cameraZoom, predator.y * windowBounds.y / cameraZoom, 0.0) - selfPosition;
         dir.z = 0.;
         dist = length(dir);
         distSquared = dist * dist;
 
-        float preyRadius = 150.0;
+        float preyRadius = predatorRepulsionRadius;
         float preyRadiusSq = preyRadius * preyRadius;
 
-        // Move birds away from predator
+        // Move boids away from predator
         if (dist < preyRadius) {
-            f = (distSquared / preyRadiusSq - 1.0) * delta * 100.;
+            f = (distSquared / preyRadiusSq - 1.0) * delta * predatorRepulsionStrength;
             velocity += normalize(dir) * f;
             limit += 5.0;
         }
@@ -89,17 +92,16 @@ export const fragmentShaderVelocity = `
         // Attract flocks to the center
         vec3 central = vec3(0., 0., 0.);
         dir = selfPosition - central;
-        dist = length(dir);
-
-        dir.y *= 2.5;
-        velocity -= normalize(dir) * delta * 5.;
+        dir.z = 0.;
+        velocity -= normalize(dir) * delta * centerAttractionStrength;
 
         for (float y = 0.0; y < height; y++) {
             for (float x = 0.0; x < width; x++) {
                 vec2 ref = vec2(x + 0.5, y + 0.5) / resolution.xy;
-                birdPosition = texture2D(texturePosition, ref).xyz;
+                boidPosition = texture2D(texturePosition, ref).xyz;
 
-                dir = birdPosition - selfPosition;
+                dir = boidPosition - selfPosition;
+                dir.z = 0.;
                 dist = length(dir);
 
                 if (dist < 0.0001) continue;
@@ -117,10 +119,10 @@ export const fragmentShaderVelocity = `
                     float threshDelta = alignmentThresh - separationThresh;
                     float adjustedPercent = (percent - separationThresh) / threshDelta;
 
-                    birdVelocity = texture2D(textureVelocity, ref).xyz;
+                    boidVelocity = texture2D(textureVelocity, ref).xyz;
 
                     f = (0.5 - cos(adjustedPercent * PI_2) * 0.5 + 0.5) * delta;
-                    velocity += normalize(birdVelocity) * f;
+                    velocity += normalize(boidVelocity) * f;
                 } else { // Cohesion
                     float threshDelta = 1.0 - alignmentThresh;
                     float adjustedPercent;
@@ -138,81 +140,55 @@ export const fragmentShaderVelocity = `
             velocity = normalize(velocity) * limit;
         }
 
+        velocity.z = 0.;
+
         gl_FragColor = vec4(velocity, 1.0);
     }
 `;
 
-// Bird Vertex Shader
-export const birdVS = `
+// Boid Vertex Shader
+export const boidVS = `
     attribute vec2 reference;
-    attribute float birdVertex;
-
-    attribute vec3 birdColor;
-
+    attribute float boidVertex;
+    
     uniform sampler2D texturePosition;
     uniform sampler2D textureVelocity;
-
-    varying vec4 vColor;
-    varying float z;
-
-    uniform float time;
-
+    
+    varying vec2 vUv;
+    
     void main() {
         vec4 tmpPos = texture2D(texturePosition, reference);
         vec3 pos = tmpPos.xyz;
         vec3 velocity = normalize(texture2D(textureVelocity, reference).xyz);
-
-        vec3 newPosition = position;
-
-        if (birdVertex == 4.0 || birdVertex == 7.0) {
-            // flap wings
-            newPosition.y = sin(tmpPos.w) * 5.;
-        }
-
-        newPosition = mat3(modelMatrix) * newPosition;
-
-        velocity.z *= -1.;
-        float xz = length(velocity.xz);
-        float xyz = 1.;
-        float x = sqrt(1. - velocity.y * velocity.y);
-
-        float cosry = velocity.x / xz;
-        float sinry = velocity.z / xz;
-
-        float cosrz = x / xyz;
-        float sinrz = velocity.y / xyz;
-
-        mat3 maty = mat3(
-            cosry, 0, -sinry,
-            0    , 1, 0,
-            sinry, 0, cosry
+        
+        // Create UV coordinates for the quad
+        vUv = vec2(
+            boidVertex == 0.0 || boidVertex == 3.0 ? 0.0 : 1.0,
+            boidVertex == 0.0 || boidVertex == 1.0 ? 0.0 : 1.0
         );
-
-        mat3 matz = mat3(
-            cosrz, sinrz, 0,
-            -sinrz, cosrz, 0,
-            0    , 0    , 1
+        
+        // Rotate quad to face velocity direction
+        float angle = atan(velocity.y, velocity.x) + 1.57079632679;
+        mat2 rotation = mat2(
+            cos(angle), sin(angle),
+            -sin(angle), cos(angle)
         );
-
-        newPosition = maty * matz * newPosition;
-        newPosition += pos;
-
-        z = newPosition.z;
-
-        vColor = vec4(birdColor, 1.0);
-        gl_Position = projectionMatrix * viewMatrix * vec4(newPosition, 1.0);
+        // I would have expected the negative sign to be on the top right, but it works when it's on the bottom left
+        
+        vec2 rotatedPosition = rotation * position.xy;
+        vec3 finalPosition = vec3(rotatedPosition, 0.0) + pos;
+        
+        gl_Position = projectionMatrix * viewMatrix * vec4(finalPosition, 1.0);
     }
 `;
 
-// Bird Fragment Shader
-export const birdFS = `
-    varying vec4 vColor;
-    varying float z;
-
-    uniform vec3 color;
-
+// Boid Fragment Shader
+export const boidFS = `
+    uniform sampler2D logoTexture;
+    varying vec2 vUv;
+    
     void main() {
-        float z2 = 0.2 + (1000. - z) / 1000. * vColor.x;
-        gl_FragColor = vec4(z2, z2, z2, 1.);
+        vec4 texColor = texture2D(logoTexture, vUv);
+        gl_FragColor = texColor;
     }
 `;

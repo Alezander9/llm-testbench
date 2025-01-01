@@ -276,12 +276,15 @@ export const getUserAgentTree = query({
 // Get user state query
 export const getUserState = query({
   args: {
-    userId: v.id("users"),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    if (!args.userId) {
+      return null;
+    }
     return await ctx.db
       .query("userStates")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId as Id<"users">))
       .first();
   },
 });

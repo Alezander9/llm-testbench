@@ -12,9 +12,26 @@ export default defineSchema({
 
   userStates: defineTable({
     userId: v.id("users"),
-    lastSelectedAgentId: v.optional(v.id("agents")),
+    recentAgentIds: v.array(v.id("agents")),
     recentTestCaseIds: v.array(v.id("testCases")),
     lastAccessedAt: v.string(),
+  }).index("by_userId", ["userId"]),
+
+  userSettings: defineTable({
+    userId: v.id("users"),
+    gridColumns: v.optional(
+      v.union(
+        v.literal(1),
+        v.literal(2),
+        v.literal(3),
+        v.literal(4),
+        v.literal(5)
+      )
+    ),
+    fontSize: v.optional(
+      v.union(v.literal("small"), v.literal("medium"), v.literal("large"))
+    ),
+    chatWindowHeight: v.optional(v.number()),
   }).index("by_userId", ["userId"]),
 
   agentFolders: defineTable({
@@ -63,21 +80,4 @@ export default defineSchema({
     .index("by_agentId", ["agentId"])
     .index("by_testCaseId", ["testCaseId"])
     .index("by_testQuestionId", ["testQuestionId"]),
-
-  userSettings: defineTable({
-    userId: v.id("users"),
-    gridColumns: v.optional(
-      v.union(
-        v.literal(1),
-        v.literal(2),
-        v.literal(3),
-        v.literal(4),
-        v.literal(5)
-      )
-    ),
-    fontSize: v.optional(
-      v.union(v.literal("small"), v.literal("medium"), v.literal("large"))
-    ),
-    chatWindowHeight: v.optional(v.number()),
-  }).index("by_userId", ["userId"]),
 });

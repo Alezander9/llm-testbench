@@ -4,25 +4,36 @@ import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer
 import {
   fragmentShaderPosition,
   fragmentShaderVelocity,
-  birdVS,
-  birdFS,
+  boidVS,
+  boidFS,
 } from "./boid-shaders";
 
-const WIDTH = 32;
+const WIDTH = 16; //originally 32
 const BIRDS = WIDTH * WIDTH;
 const BOUNDS = 800;
 const BOUNDS_HALF = BOUNDS / 2;
 
-class BirdGeometry extends THREE.BufferGeometry {
+interface BoidBackgroundProps {
+  separationDistance?: number;
+  alignmentDistance?: number;
+  cohesionDistance?: number;
+  centerAttractionStrength?: number;
+  predatorRepulsionStrength?: number;
+  predatorRepulsionRadius?: number;
+  speedLimit?: number;
+  cameraZoom?: number;
+}
+
+class BoidGeometry extends THREE.BufferGeometry {
   constructor() {
     super();
 
-    const trianglesPerBird = 3;
-    const triangles = BIRDS * trianglesPerBird;
+    const trianglesPerBoid = 2;
+    const triangles = BIRDS * trianglesPerBoid;
     const points = triangles * 3;
 
     const vertices = new THREE.BufferAttribute(new Float32Array(points * 3), 3);
-    const birdColors = new THREE.BufferAttribute(
+    const boidColors = new THREE.BufferAttribute(
       new Float32Array(points * 3),
       3
     );
@@ -30,12 +41,12 @@ class BirdGeometry extends THREE.BufferGeometry {
       new Float32Array(points * 2),
       2
     );
-    const birdVertex = new THREE.BufferAttribute(new Float32Array(points), 1);
+    const boidVertex = new THREE.BufferAttribute(new Float32Array(points), 1);
 
     this.setAttribute("position", vertices);
-    this.setAttribute("birdColor", birdColors);
+    this.setAttribute("boidColor", boidColors);
     this.setAttribute("reference", references);
-    this.setAttribute("birdVertex", birdVertex);
+    this.setAttribute("boidVertex", boidVertex);
 
     let v = 0;
 
@@ -45,49 +56,85 @@ class BirdGeometry extends THREE.BufferGeometry {
       }
     }
 
-    const wingsSpan = 20;
-
     for (let f = 0; f < BIRDS; f++) {
-      // Body
-      verts_push(0, -0, -20, 0, 4, -20, 0, 0, 30);
+      // Triangle 1 of quad
+      verts_push(
+        -0.5,
+        -0.5,
+        0, // bottom left
+        0.5,
+        -0.5,
+        0, // bottom right
+        0.5,
+        0.5,
+        0
+      ); // top right
 
-      // Left Wing
-      verts_push(0, 0, -15, -wingsSpan, 0, 0, 0, 0, 15);
-
-      // Right Wing
-      verts_push(0, 0, 15, wingsSpan, 0, 0, 0, 0, -15);
+      // Triangle 2 of quad
+      verts_push(
+        -0.5,
+        -0.5,
+        0, // bottom left
+        0.5,
+        0.5,
+        0, // top right
+        -0.5,
+        0.5,
+        0
+      ); // top left
     }
 
     for (let v = 0; v < triangles * 3; v++) {
       const triangleIndex = ~~(v / 3);
-      const birdIndex = ~~(triangleIndex / trianglesPerBird);
-      const x = (birdIndex % WIDTH) / WIDTH;
-      const y = ~~(birdIndex / WIDTH) / WIDTH;
+      const boidIndex = ~~(triangleIndex / trianglesPerBoid);
+      const x = (boidIndex % WIDTH) / WIDTH;
+      const y = ~~(boidIndex / WIDTH) / WIDTH;
 
       const c = new THREE.Color(0x666666 + (~~(v / 9) / BIRDS) * 0x666666);
 
-      birdColors.array[v * 3 + 0] = c.r;
-      birdColors.array[v * 3 + 1] = c.g;
-      birdColors.array[v * 3 + 2] = c.b;
+      boidColors.array[v * 3 + 0] = c.r;
+      boidColors.array[v * 3 + 1] = c.g;
+      boidColors.array[v * 3 + 2] = c.b;
 
       references.array[v * 2] = x;
       references.array[v * 2 + 1] = y;
 
-      birdVertex.array[v] = v % 9;
+      // Add UV coordinates for the texture
+      const isSecondTri = triangleIndex % 2;
+      const vertexInTri = v % 3;
+
+      if (!isSecondTri) {
+        // First triangle: bottom-left, bottom-right, top-right
+        boidVertex.array[v] = vertexInTri === 0 ? 0 : vertexInTri === 1 ? 1 : 2;
+      } else {
+        // Second triangle: bottom-left, top-right, top-left
+        boidVertex.array[v] = vertexInTri === 0 ? 0 : vertexInTri === 1 ? 2 : 3;
+      }
     }
 
-    this.scale(0.2, 0.2, 0.2);
+    this.scale(10, 10, 1);
   }
 }
 
-export default function BoidBackground() {
+export default function BoidBackground({
+  separationDistance = 20.0,
+  alignmentDistance = 20.0,
+  cohesionDistance = 20.0,
+  centerAttractionStrength = 1.0,
+  predatorRepulsionStrength = 100.0,
+  predatorRepulsionRadius = 100.0,
+  speedLimit = 9.0,
+  cameraZoom = 1.0,
+}: BoidBackgroundProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const velocityUniformsRef = useRef<any>(null);
+  const cameraRef = useRef<THREE.OrthographicCamera>();
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     // Three.js variables
-    let camera: THREE.PerspectiveCamera;
+    let camera: THREE.OrthographicCamera;
     let scene: THREE.Scene;
     let renderer: THREE.WebGLRenderer;
     let gpuCompute: GPUComputationRenderer;
@@ -95,7 +142,7 @@ export default function BoidBackground() {
     let positionVariable: any;
     let positionUniforms: any;
     let velocityUniforms: any;
-    let birdUniforms: any;
+    let boidUniforms: any;
 
     // Mouse variables
     let mouseX = 0;
@@ -134,17 +181,29 @@ export default function BoidBackground() {
 
       positionUniforms = positionVariable.material.uniforms;
       velocityUniforms = velocityVariable.material.uniforms;
+      velocityUniformsRef.current = velocityUniforms; // Store in ref
 
       positionUniforms["time"] = { value: 0.0 };
       positionUniforms["delta"] = { value: 0.0 };
       velocityUniforms["time"] = { value: 1.0 };
       velocityUniforms["delta"] = { value: 0.0 };
       velocityUniforms["testing"] = { value: 1.0 };
-      velocityUniforms["separationDistance"] = { value: 1.0 };
-      velocityUniforms["alignmentDistance"] = { value: 1.0 };
-      velocityUniforms["cohesionDistance"] = { value: 1.0 };
-      velocityUniforms["freedomFactor"] = { value: 1.0 };
+      velocityUniforms["separationDistance"] = { value: separationDistance };
+      velocityUniforms["alignmentDistance"] = { value: alignmentDistance };
+      velocityUniforms["cohesionDistance"] = { value: cohesionDistance };
+      velocityUniforms["centerAttractionStrength"] = {
+        value: centerAttractionStrength,
+      };
+      velocityUniforms["predatorRepulsionStrength"] = {
+        value: predatorRepulsionStrength,
+      };
+      velocityUniforms["predatorRepulsionRadius"] = {
+        value: predatorRepulsionRadius,
+      };
+
+      velocityUniforms["speedLimit"] = { value: speedLimit };
       velocityUniforms["predator"] = { value: new THREE.Vector3() };
+      velocityUniforms["cameraZoom"] = { value: cameraZoom };
       velocityVariable.material.defines.BOUNDS = BOUNDS.toFixed(2);
 
       velocityVariable.wrapS = THREE.RepeatWrapping;
@@ -166,6 +225,11 @@ export default function BoidBackground() {
         computeCanvas.style.left = "0";
         computeCanvas.style.zIndex = "-1";
       }
+
+      // Add the new windowBounds uniform
+      velocityUniforms["windowBounds"] = {
+        value: new THREE.Vector2(window.innerWidth, window.innerHeight),
+      };
     }
 
     function fillPositionTexture(texture: THREE.DataTexture) {
@@ -173,11 +237,10 @@ export default function BoidBackground() {
       for (let k = 0, kl = theArray.length; k < kl; k += 4) {
         const x = Math.random() * BOUNDS - BOUNDS_HALF;
         const y = Math.random() * BOUNDS - BOUNDS_HALF;
-        const z = Math.random() * BOUNDS - BOUNDS_HALF;
 
         theArray[k + 0] = x;
         theArray[k + 1] = y;
-        theArray[k + 2] = z;
+        theArray[k + 2] = 0; // Set z to 0
         theArray[k + 3] = 1;
       }
     }
@@ -187,29 +250,41 @@ export default function BoidBackground() {
       for (let k = 0, kl = theArray.length; k < kl; k += 4) {
         const x = Math.random() - 0.5;
         const y = Math.random() - 0.5;
-        const z = Math.random() - 0.5;
 
         theArray[k + 0] = x * 10;
         theArray[k + 1] = y * 10;
-        theArray[k + 2] = z * 10;
+        theArray[k + 2] = 0; // Set z velocity to 0
         theArray[k + 3] = 1;
       }
     }
 
-    function init() {
-      // Initialize camera
-      camera = new THREE.PerspectiveCamera(
-        75,
-        window.innerWidth / window.innerHeight,
-        1,
-        3000
+    function updateBounds() {
+      if (!velocityUniforms) return;
+      velocityUniforms["windowBounds"].value.set(
+        window.innerWidth,
+        window.innerHeight
       );
-      camera.position.z = 350;
+    }
+
+    function init() {
+      // Initialize camera with orthographic projection and bounds matching our window size
+      camera = new THREE.OrthographicCamera(
+        -windowHalfX, // left
+        windowHalfX, // right
+        windowHalfY, // top
+        -windowHalfY, // bottom
+        1, // near
+        1000 // far
+      );
+      cameraRef.current = camera;
+      camera.position.z = 350; // Keep this the same
+      camera.position.y = 0; // Center vertically
+      camera.position.x = 0; // Center horizontally
 
       // Initialize scene
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xffffff);
-      scene.fog = new THREE.Fog(0xffffff, 100, 1000);
+      scene.background = new THREE.Color(0xf1ebe5);
+      scene.fog = new THREE.Fog(0xf1ebe5, 100, 1000);
 
       // Initialize renderer
       renderer = new THREE.WebGLRenderer({
@@ -228,6 +303,9 @@ export default function BoidBackground() {
       // Initialize compute renderer
       initComputeRenderer();
 
+      // Add initial bounds update
+      updateBounds();
+
       // Add event listeners
       if (containerRef.current) {
         containerRef.current.style.touchAction = "none";
@@ -235,16 +313,20 @@ export default function BoidBackground() {
       }
       window.addEventListener("resize", onWindowResize);
 
-      // Initialize birds
-      initBirds();
+      // Initialize boids
+      initBoids();
     }
 
-    function initBirds() {
-      const geometry = new BirdGeometry();
+    function initBoids() {
+      const geometry = new BoidGeometry();
 
-      // For Vertex and Fragment
-      birdUniforms = {
-        color: { value: new THREE.Color(0xff2200) },
+      // Add texture loader and load logo
+      const textureLoader = new THREE.TextureLoader();
+      const logoTexture = textureLoader.load("/TheoIcon256.png");
+
+      boidUniforms = {
+        // Remove color uniform and add logoTexture
+        logoTexture: { value: logoTexture },
         texturePosition: { value: null },
         textureVelocity: { value: null },
         time: { value: 1.0 },
@@ -252,33 +334,43 @@ export default function BoidBackground() {
       };
 
       const material = new THREE.ShaderMaterial({
-        uniforms: birdUniforms,
-        vertexShader: birdVS,
-        fragmentShader: birdFS,
+        uniforms: boidUniforms,
+        vertexShader: boidVS,
+        fragmentShader: boidFS,
         side: THREE.DoubleSide,
+        // Add transparency settings
+        transparent: true,
+        depthWrite: false,
       });
 
-      const birdMesh = new THREE.Mesh(geometry, material);
-      birdMesh.rotation.y = Math.PI / 2;
-      birdMesh.matrixAutoUpdate = false;
-      birdMesh.updateMatrix();
+      const boidMesh = new THREE.Mesh(geometry, material);
+      boidMesh.rotation.y = Math.PI / 2;
+      boidMesh.matrixAutoUpdate = false;
+      boidMesh.updateMatrix();
 
-      scene.add(birdMesh);
+      scene.add(boidMesh);
     }
 
     function onWindowResize() {
       windowHalfX = window.innerWidth / 2;
       windowHalfY = window.innerHeight / 2;
 
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
+      // Update orthographic camera frustum
+      camera.left = -windowHalfX;
+      camera.right = windowHalfX;
+      camera.top = windowHalfY;
+      camera.bottom = -windowHalfY;
 
+      camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
+
+      updateBounds(); // Add bounds update on resize
     }
 
     function onPointerMove(event: PointerEvent) {
       if (event.isPrimary === false) return;
 
+      // shift mouse position from range (0, 1) to range (-0.5, 0.5)
       mouseX = event.clientX - windowHalfX;
       mouseY = event.clientY - windowHalfY;
     }
@@ -302,23 +394,27 @@ export default function BoidBackground() {
       positionUniforms["delta"].value = delta;
       velocityUniforms["time"].value = performance.now();
       velocityUniforms["delta"].value = delta;
-      birdUniforms["time"].value = performance.now();
-      birdUniforms["delta"].value = delta;
+      boidUniforms["time"].value = performance.now();
+      boidUniforms["delta"].value = delta;
 
-      // Update predator position
+      // Update predator position, will be in range (-1, 1)
       velocityUniforms["predator"].value.set(
         (0.5 * mouseX) / windowHalfX,
         (-0.5 * mouseY) / windowHalfY,
         0
       );
 
+      // Move predator position far away until position updates again
+      mouseX = 10000;
+      mouseY = 10000;
+
       // Compute new positions
       gpuCompute.compute();
 
-      // Update bird uniforms with new positions
-      birdUniforms["texturePosition"].value =
+      // Update boid uniforms with new positions
+      boidUniforms["texturePosition"].value =
         gpuCompute.getCurrentRenderTarget(positionVariable).texture;
-      birdUniforms["textureVelocity"].value =
+      boidUniforms["textureVelocity"].value =
         gpuCompute.getCurrentRenderTarget(velocityVariable).texture;
 
       // Render the scene
@@ -336,6 +432,39 @@ export default function BoidBackground() {
       renderer.dispose();
     };
   }, []);
+
+  // New separate effect for uniform updates
+  useEffect(() => {
+    const uniforms = velocityUniformsRef.current;
+    if (!uniforms) return;
+
+    uniforms.separationDistance.value = separationDistance;
+    uniforms.alignmentDistance.value = alignmentDistance;
+    uniforms.cohesionDistance.value = cohesionDistance;
+    uniforms.centerAttractionStrength.value = centerAttractionStrength;
+    uniforms.predatorRepulsionStrength.value = predatorRepulsionStrength;
+    uniforms.predatorRepulsionRadius.value = predatorRepulsionRadius;
+    uniforms.speedLimit.value = speedLimit;
+    uniforms.cameraZoom.value = cameraZoom;
+  }, [
+    separationDistance,
+    alignmentDistance,
+    cohesionDistance,
+    centerAttractionStrength,
+    predatorRepulsionStrength,
+    speedLimit,
+    predatorRepulsionRadius,
+    cameraZoom,
+  ]);
+
+  // Add new effect for camera zoom
+  useEffect(() => {
+    const camera = cameraRef.current;
+    if (!camera) return;
+
+    camera.zoom = cameraZoom;
+    camera.updateProjectionMatrix();
+  }, [cameraZoom]);
 
   return (
     <div

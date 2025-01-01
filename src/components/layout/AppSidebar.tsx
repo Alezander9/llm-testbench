@@ -1,4 +1,4 @@
-import { Search, PenSquare, Plus } from "lucide-react";
+import { PenSquare, Plus } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -9,10 +9,28 @@ import { useSidebar } from "../../components/ui/sidebar";
 import { UserButton } from "@clerk/clerk-react";
 import { IconButton } from "../../components/ui/icon-button";
 import { AgentList } from "../features/agent-list/AgentList";
+import { SearchSelector } from "../ui/search-selector";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
+import { useGetUser } from "../../hooks/useGetUser";
 
 const AppSidebar = () => {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const currentUser = useGetUser();
+
+  const agents = useQuery(api.queries.getUserAgents, {
+    userId: currentUser?._id,
+  });
+  const userState = useQuery(api.queries.getUserState, {
+    userId: currentUser?._id,
+  });
+
+  const handleAgentSelect = (agentId: Id<"agents">) => {
+    // TODO: Implement agent selection logic
+    console.log("Selected agent:", agentId);
+  };
 
   return (
     <>
@@ -21,9 +39,23 @@ const AppSidebar = () => {
           <div className="flex items-center justify-between">
             <SidebarTrigger />
             <div className="flex items-center gap-2">
-              <IconButton variant="ghost">
-                <Search style={{ width: "24px", height: "24px" }} />
-              </IconButton>
+              {currentUser && (
+                <SearchSelector
+                  value={undefined}
+                  onValueChange={handleAgentSelect}
+                  items={agents}
+                  recentIds={userState?.recentAgentIds}
+                  placeholder="Select agent"
+                  createNewText="Create new agent"
+                  onCreateNew={() => {
+                    window.location.hash = "make-agent";
+                  }}
+                  onEdit={(id) => {
+                    window.location.hash = `edit-agent/${id}`;
+                  }}
+                  variant="agent"
+                />
+              )}
               <UserButton />
             </div>
           </div>

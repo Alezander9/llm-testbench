@@ -49,6 +49,7 @@ export const createUser = mutation({
     await ctx.db.insert("userStates", {
       userId: userId,
       lastAccessedAt: new Date().toISOString(),
+      recentAgentIds: [],
       recentTestCaseIds: [],
     });
 
@@ -418,21 +419,29 @@ export const deleteAgent = mutation({
   },
 });
 
-// Update last selected agent
-export const updateLastSelectedAgent = mutation({
+// Add agent to recents
+export const addRecentAgent = mutation({
   args: {
     userId: v.id("users"),
     agentId: v.id("agents"),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
+    const existingUserState = await ctx.db
       .query("userStates")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
 
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        lastSelectedAgentId: args.agentId,
+    if (existingUserState) {
+      // Remove the agentId if it already exists in the array
+      const filteredRecents = existingUserState.recentAgentIds.filter(
+        (id) => id !== args.agentId
+      );
+
+      // Add the new agentId to the start and limit to 5 items
+      const newRecents = [args.agentId, ...filteredRecents].slice(0, 5);
+
+      await ctx.db.patch(existingUserState._id, {
+        recentAgentIds: newRecents,
         lastAccessedAt: new Date().toISOString(),
       });
     }
@@ -446,144 +455,27 @@ export const addRecentTestCase = mutation({
     testCaseId: v.id("testCases"),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
+    const existingUserState = await ctx.db
       .query("userStates")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
 
-    if (existing) {
+    if (existingUserState) {
       // Remove the testCaseId if it already exists in the array
-      const filteredRecents = existing.recentTestCaseIds.filter(
+      const filteredRecents = existingUserState.recentTestCaseIds.filter(
         (id) => id !== args.testCaseId
       );
 
       // Add the new testCaseId to the start and limit to 5 items
       const newRecents = [args.testCaseId, ...filteredRecents].slice(0, 5);
 
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch(existingUserState._id, {
         recentTestCaseIds: newRecents,
         lastAccessedAt: new Date().toISOString(),
       });
     }
   },
 });
-
-// export const updateTestCase = mutation({
-//   args: {
-//     testCaseId: v.id("testCases"),
-//     name: v.string(),
-//     description: v.optional(v.string()),
-//     questions: v.array(
-//       v.object({
-//         id: v.optional(v.id("testQuestions")),
-//         content: v.string(),
-//         orderIndex: v.number(),
-//       })
-//     ),
-//   },
-//   handler: async (ctx, args) => {
-//     // Verify test case exists
-//     const testCase = await ctx.db.get(args.testCaseId);
-//     if (!testCase) {
-//       throw new Error("Test case not found");
-//     }
-
-//     // Update test case basic info
-//     await ctx.db.patch(args.testCaseId, {
-//       name: args.name,
-//       description: args.description,
-//     });
-
-//     // Get existing questions
-//     const existingQuestions = await ctx.db
-//       .query("testQuestions")
-//       .withIndex("by_testCase_order")
-//       .filter((q) => q.eq(q.field("testCaseId"), args.testCaseId))
-//       .collect();
-
-//     // Create sets of question IDs for comparison
-//     const existingIds = new Set(existingQuestions.map((q) => q._id));
-//     const newIds = new Set(
-//       args.questions
-//         .map((q) => q.id)
-//         .filter((id): id is Id<"testQuestions"> => id !== undefined)
-//     );
-
-//     // Determine questions to add and remove
-//     const questionsToAdd = args.questions.filter((q) => !q.id);
-//     const questionIdsToRemove = [...existingIds].filter(
-//       (id) => !newIds.has(id)
-//     );
-
-//     // Get all test responses for this test case
-//     const testResponses = await ctx.db
-//       .query("testResponses")
-//       .withIndex("by_testCaseId")
-//       .filter((q) => q.eq(q.field("testCaseId"), args.testCaseId))
-//       .collect();
-
-//     // Create a set of unique agent/run pairs
-//     const agentRunPairs = new Set(
-//       testResponses.map((r) => `${r.agentId}-${r.runIndex}`)
-//     );
-
-//     // For each new question, generate responses for all agent/run pairs
-//     for (const question of questionsToAdd) {
-//       // First create the question
-//       const newQuestionId = await ctx.db.insert("testQuestions", {
-//         testCaseId: args.testCaseId,
-//         testContent: question.content,
-//         orderIndex: question.orderIndex,
-//         userId: testCase.userId,
-//       });
-
-//       // Generate responses for each agent/run pair
-//       for (const pair of agentRunPairs) {
-//         const [agentId, runIndex] = pair.split("-");
-
-//         // Get agent details for the prompt and model
-//         const agent = await ctx.db.get(agentId as Id<"agents">);
-//         if (!agent) continue;
-
-//         // Generate response using the action
-//         await ctx.runAction(internal.actions.internalGenerateSingleResponse, {
-//           userId: testCase.userId,
-//           testCaseId: args.testCaseId,
-//           agentId: agentId as Id<"agents">,
-//           testQuestionId: newQuestionId,
-//           runIndex: parseInt(runIndex),
-//           questionContent: question.content,
-//           agentPrompt: agent.prompt,
-//           agentModel: agent.model,
-//         });
-//       }
-//     }
-
-//     // Delete responses for removed questions
-//     for (const questionId of questionIdsToRemove) {
-//       const responsesToDelete = testResponses.filter(
-//         (r) => r.testQuestionId === questionId
-//       );
-
-//       for (const response of responsesToDelete) {
-//         await ctx.db.delete(response._id);
-//       }
-
-//       // Delete the question itself
-//       await ctx.db.delete(questionId);
-//     }
-
-//     // Update existing question indices
-//     const questionsToUpdate = args.questions.filter((q) => q.id);
-//     for (const question of questionsToUpdate) {
-//       if (question.id) {
-//         await ctx.db.patch(question.id, {
-//           orderIndex: question.orderIndex,
-//         });
-//       }
-//     }
-//   },
-// });
 
 export const updateTestQuestions = mutation({
   args: {

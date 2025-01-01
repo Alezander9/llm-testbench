@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { SidebarProvider } from "../components/ui/sidebar";
 import AppSidebar from "../components/layout/AppSidebar";
 import { DashboardLayout } from "../components/features/dashboard/DashboardLayout";
@@ -8,52 +8,33 @@ import { TestCaseEditorLayout } from "../components/features/test-case-editor/Te
 import { useSyncUser, useInitializeSettings } from "../hooks";
 
 function Home() {
+  const [hash, setHash] = useState(window.location.hash);
   useSyncUser();
   useInitializeSettings();
+
+  useEffect(() => {
+    const handleHashChange = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  const isAgentEditor =
+    hash.startsWith("#make-agent") ||
+    hash.startsWith("#view-agent") ||
+    hash.startsWith("#update-agent");
+  const isTestCaseEditor =
+    hash.startsWith("#make-test-case") || hash.startsWith("#edit-test-case");
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen flex-1">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <>
-                <AppSidebar />
-                <main className="flex-1">
-                  <DashboardLayout />
-                </main>
-              </>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <>
-                <AppSidebar />
-                <main className="flex-1">
-                  <Settings />
-                </main>
-              </>
-            }
-          />
-          <Route
-            path="/agent/*"
-            element={
-              <main className="flex-1">
-                <AgentEditorLayout />
-              </main>
-            }
-          />
-          <Route
-            path="/test-case/*"
-            element={
-              <main className="flex-1">
-                <TestCaseEditorLayout />
-              </main>
-            }
-          />
-        </Routes>
+        {!isAgentEditor && !isTestCaseEditor && <AppSidebar />}
+        <main className="flex-1">
+          {!isAgentEditor && !isTestCaseEditor && <DashboardLayout />}
+          {hash.startsWith("#settings") && <Settings />}
+          {isAgentEditor && <AgentEditorLayout />}
+          {isTestCaseEditor && <TestCaseEditorLayout />}
+        </main>
       </div>
     </SidebarProvider>
   );

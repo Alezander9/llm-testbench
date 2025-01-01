@@ -13,7 +13,7 @@ import { ScoreInput } from "./ScoreInput";
 import { useEffect, useState } from "react";
 import { useDebounce } from "../../../hooks/useDebounce";
 import { RunSelector } from "./RunSelector";
-import { TestCaseSelector } from "./TestCaseSelector";
+import { SearchSelector } from "../../ui/search-selector";
 
 export const DashboardControlPanel = () => {
   const currentUser = useGetUser();
@@ -136,6 +136,14 @@ export const DashboardControlPanel = () => {
       agentId: selectedAgentId ?? undefined,
     }) ?? 0;
 
+  const testCases = useQuery(api.queries.getUserTestCases, {
+    userId: currentUser?._id,
+  });
+
+  const userState = useQuery(api.queries.getUserState, {
+    userId: currentUser?._id,
+  });
+
   return (
     <div
       className={cn(
@@ -186,10 +194,20 @@ export const DashboardControlPanel = () => {
           <div className="flex items-center gap-2">
             <span className="text-lg font-semibold">Test:</span>
             {currentUser && (
-              <TestCaseSelector
+              <SearchSelector
                 value={selectedTestCaseId ?? undefined}
                 onValueChange={handleTestCaseSelect}
-                userId={currentUser._id}
+                items={testCases}
+                recentIds={userState?.recentTestCaseIds}
+                placeholder="Select test case"
+                createNewText="Create new test case"
+                onCreateNew={() => {
+                  window.location.hash = "make-test-case";
+                }}
+                onEdit={(id) => {
+                  window.location.hash = `edit-test-case/${id}`;
+                }}
+                variant="testcase"
               />
             )}
           </div>
