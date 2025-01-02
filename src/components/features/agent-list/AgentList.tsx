@@ -464,9 +464,31 @@ export const AgentList = () => {
   const [draggingId, setDraggingId] = useState<UniqueIdentifier | null>(null);
   const moveAgent = useMutation(api.mutations.moveAgent);
   const moveFolder = useMutation(api.mutations.moveFolder);
+  const updateFolderExpanded = useMutation(
+    api.mutations.updateFolderExpandedState
+  );
   const agentTree = useQuery(api.queries.getUserAgentTree, {
     userId: currentUser?._id,
   });
+
+  // Initialize expanded state from agentTree when it loads
+  useEffect(() => {
+    if (agentTree) {
+      const expandedFolders = new Set<string>();
+      const collectExpandedFolders = (items: TreeItemType[]) => {
+        items.forEach((item) => {
+          if (item.type === "folder" && item.expanded) {
+            expandedFolders.add(item.id);
+          }
+          if (item.type === "folder" && item.children) {
+            collectExpandedFolders(item.children);
+          }
+        });
+      };
+      collectExpandedFolders(agentTree);
+      setExpanded(expandedFolders);
+    }
+  }, [agentTree]);
 
   const sensors = useSensors(
     useSensor(SmartPointerSensor, {
@@ -511,6 +533,23 @@ export const AgentList = () => {
     }
   };
 
+  const handleFolderToggle = (folderId: Id<"agentFolders">) => {
+    const newExpanded = new Set(expanded);
+    const isCurrentlyExpanded = newExpanded.has(folderId);
+
+    if (isCurrentlyExpanded) {
+      newExpanded.delete(folderId);
+    } else {
+      newExpanded.add(folderId);
+    }
+
+    setExpanded(newExpanded);
+    updateFolderExpanded({
+      folderId,
+      expanded: !isCurrentlyExpanded,
+    });
+  };
+
   const renderTree = (items: TreeItemType[]) => {
     return items.map((item) => (
       <div key={item.id}>
@@ -523,15 +562,7 @@ export const AgentList = () => {
               label={item.name}
               isFolder={true}
               isExpanded={expanded.has(item.id)}
-              onToggle={() => {
-                const newExpanded = new Set(expanded);
-                if (newExpanded.has(item.id)) {
-                  newExpanded.delete(item.id);
-                } else {
-                  newExpanded.add(item.id);
-                }
-                setExpanded(newExpanded);
-              }}
+              onToggle={() => handleFolderToggle(item.id as Id<"agentFolders">)}
               depth={item.depth}
               parentFolderId={item.parentFolderId}
             />

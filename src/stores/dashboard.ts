@@ -18,8 +18,6 @@ interface DashboardState {
       isTyping: boolean;
     }
   >;
-  setQuestionResponse: (questionId: string, response: string) => void;
-  setQuestionIsTyping: (questionId: string, isTyping: boolean) => void;
   runIndex: number;
   setRunIndex: (index: number) => void;
   generatingQuestions: Set<Id<"testQuestions">>;
@@ -65,20 +63,6 @@ export const useDashboardStore = create<DashboardState>()(
       selectedAgentId: null,
       setSelectedAgentId: (id) => set({ selectedAgentId: id }),
       questionsMap: {},
-      setQuestionResponse: (questionId, response) =>
-        set((state) => ({
-          questionsMap: {
-            ...state.questionsMap,
-            [questionId]: { ...state.questionsMap[questionId], response },
-          },
-        })),
-      setQuestionIsTyping: (questionId, isTyping) =>
-        set((state) => ({
-          questionsMap: {
-            ...state.questionsMap,
-            [questionId]: { ...state.questionsMap[questionId], isTyping },
-          },
-        })),
       runIndex: 1,
       setRunIndex: (index) => set({ runIndex: index }),
       generatingQuestions: new Set<Id<"testQuestions">>(),

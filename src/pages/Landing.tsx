@@ -3,6 +3,7 @@ import { Button } from "../components/ui/button";
 import BoidBackground from "../components/features/landing/BoidBackground";
 import { ArrowRight, Zap, Box, TestTube, Check } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import TheoLogo from "../assets/TheoLogo1024.png";
 
 interface BoidParams {
   separationDistance: number;
@@ -64,7 +65,7 @@ const SECTION_PARAMS: Record<string, BoidParams> = {
     predatorRepulsionStrength: 50.0,
     predatorRepulsionRadius: 80.0,
     speedLimit: 6.0,
-    cameraZoom: 1.5,
+    cameraZoom: 1.6,
   },
   playground: {
     separationDistance: 20.0,
@@ -74,7 +75,7 @@ const SECTION_PARAMS: Record<string, BoidParams> = {
     predatorRepulsionStrength: 70.0,
     predatorRepulsionRadius: 50.0,
     speedLimit: 10.0,
-    cameraZoom: 1.0,
+    cameraZoom: 1.2,
   },
 };
 
@@ -175,7 +176,7 @@ function Landing() {
   return (
     <div className="relative min-h-screen">
       <img
-        src="/TheoLogo1024.png"
+        src={TheoLogo}
         alt="Theo Logo"
         className="fixed top-4 left-4 h-20 z-20"
       />
@@ -191,7 +192,7 @@ function Landing() {
       >
         {/* Hero Section */}
         <section className="min-h-screen flex items-center justify-center">
-          <div className="container mx-auto px-4 py-32 backdrop-blur-sm bg-background/30 rounded-lg pointer-events-auto">
+          <div className="w-full px-4 py-32 backdrop-blur-sm bg-background/30 rounded-lg pointer-events-auto">
             <h1 className="text-6xl font-bold text-center mb-6 cursor-default">
               Theo: A Prompt Engineering Studio
             </h1>
@@ -209,12 +210,12 @@ function Landing() {
         </section>
 
         {/* Features Section */}
-        <section className="py-24 pointer-events-auto">
+        <section className="py-24 ">
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-16">
               Key Features
             </h2>
-            <div className="flex flex-col gap-8 max-w-2xl mx-auto bg-background/40 backdrop-blur-md p-8 rounded-lg">
+            <div className="flex flex-col gap-8 max-w-2xl mx-auto bg-background/40 backdrop-blur-md p-8 rounded-lg pointer-events-auto">
               <FeatureCard
                 icon={<Box />}
                 title="Organize Your Prompts"
@@ -235,7 +236,7 @@ function Landing() {
         </section>
 
         {/* Why Theo Section */}
-        <section className="py-24 pointer-events-auto">
+        <section className="py-24 ">
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-16">Why Theo?</h2>
             <div className="grid md:grid-cols-2 gap-x-12 gap-y-6 max-w-4xl mx-auto">
@@ -272,12 +273,12 @@ function Landing() {
         </section>
 
         {/* Pricing Section */}
-        <section className="py-24 pointer-events-auto">
+        <section className="py-24">
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-16">
               Simple Pricing
             </h2>
-            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto bg-background/40 backdrop-blur-md p-8 rounded-lg">
+            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto bg-background/40 backdrop-blur-md p-8 rounded-lg pointer-events-auto">
               <div className="p-8 rounded-lg bg-background/60 backdrop-blur-sm flex flex-col">
                 <h3 className="text-2xl font-bold mb-4">Free</h3>
                 <ul className="space-y-4 mb-8 flex-grow">
@@ -304,18 +305,24 @@ function Landing() {
         </section>
 
         {/* Final CTA Section */}
-        <section className="min-h-screen flex items-center justify-center pointer-events-auto">
-          <div className="text-center">
+        <section className="min-h-screen flex items-center justify-center">
+          <div className="text-center pointer-events-auto">
             <h2 className="text-4xl font-bold mb-8">
               Ready to transform your AI interactions?
             </h2>
-            <Button size="lg">
+            <Button
+              size="lg"
+              variant="primary"
+              onClick={() => {
+                console.log("clicked");
+              }}
+            >
               Start Now <ArrowRight className="ml-2" />
             </Button>
           </div>
         </section>
         {/* Playground section */}
-        <section className="min-h-screen hover:pointer-events-auto bg-transparent"></section>
+        <section className="min-h-screen bg-transparent"></section>
       </div>
     </div>
   );
@@ -349,7 +356,7 @@ function WhyCard({
   description: string;
 }) {
   return (
-    <div className="p-6 rounded-lg bg-background/60 backdrop-blur-sm">
+    <div className="p-6 rounded-lg bg-background/60 backdrop-blur-sm pointer-events-auto">
       <h3 className="text-lg font-bold mb-2">{title}</h3>
       <p className="text-gray-700">{description}</p>
     </div>

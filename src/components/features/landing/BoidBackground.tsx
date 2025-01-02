@@ -7,6 +7,7 @@ import {
   boidVS,
   boidFS,
 } from "./boid-shaders";
+import TheoIcon from "../../../assets/TheoIcon256.png";
 
 const WIDTH = 16; //originally 32
 const BIRDS = WIDTH * WIDTH;
@@ -322,7 +323,7 @@ export default function BoidBackground({
 
       // Add texture loader and load logo
       const textureLoader = new THREE.TextureLoader();
-      const logoTexture = textureLoader.load("/TheoIcon256.png");
+      const logoTexture = textureLoader.load(TheoIcon);
 
       boidUniforms = {
         // Remove color uniform and add logoTexture

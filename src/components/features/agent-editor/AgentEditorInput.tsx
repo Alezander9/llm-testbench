@@ -12,13 +12,7 @@ import { Input } from "../../../components/ui/input";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useGetUser } from "../../../hooks/useGetUser";
-
-const AVAILABLE_MODELS = [
-  "gpt-4o",
-  "gpt-4o-mini",
-  "gpt-4-turbo",
-  "gpt-3.5-turbo",
-] as const;
+import { AVAILABLE_MODELS } from "../../features/llm/available-models";
 
 interface AgentEditorInputProps {
   viewOnlyMode?: boolean;
@@ -104,9 +98,13 @@ export const AgentEditorInput = ({
             <SelectValue placeholder="Select Model" />
           </SelectTrigger>
           <SelectContent>
-            {AVAILABLE_MODELS.map((model) => (
-              <SelectItem key={model} value={model} className="cursor-pointer">
-                {model}
+            {Object.entries(AVAILABLE_MODELS).map(([modelId, displayName]) => (
+              <SelectItem
+                key={modelId}
+                value={modelId}
+                className="cursor-pointer"
+              >
+                {displayName}
               </SelectItem>
             ))}
           </SelectContent>

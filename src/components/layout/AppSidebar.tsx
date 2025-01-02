@@ -36,26 +36,26 @@ const AppSidebar = () => {
     <>
       <Sidebar>
         <SidebarHeader className="px-2 pt-4 pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <SidebarTrigger />
-            <div className="flex items-center gap-2">
-              {currentUser && (
-                <SearchSelector
-                  value={undefined}
-                  onValueChange={handleAgentSelect}
-                  items={agents}
-                  recentIds={userState?.recentAgentIds}
-                  placeholder="Select agent"
-                  createNewText="Create new agent"
-                  onCreateNew={() => {
-                    window.location.hash = "make-agent";
-                  }}
-                  onEdit={(id) => {
-                    window.location.hash = `edit-agent/${id}`;
-                  }}
-                  variant="agent"
-                />
-              )}
+            {currentUser && (
+              <SearchSelector
+                value={undefined}
+                onValueChange={handleAgentSelect}
+                items={agents}
+                recentIds={userState?.recentAgentIds}
+                placeholder="Select agent"
+                createNewText="Create new agent"
+                onCreateNew={() => {
+                  window.location.hash = "make-agent";
+                }}
+                onEdit={(id) => {
+                  window.location.hash = `edit-agent/${id}`;
+                }}
+                variant="agent"
+              />
+            )}
+            <div className="flex items-center px-2 py-1">
               <UserButton />
             </div>
           </div>

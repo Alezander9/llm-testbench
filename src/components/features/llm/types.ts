@@ -1,10 +1,10 @@
-export type LLMProvider = "openai"; // | "anthropic" | "gemini"
+export type LLMProvider = "openai" | "deepseek" | "anthropic";
 
 // Provider configurations
 export type ProviderConfigs = {
   openai: ProviderConfig;
-  //   anthropic?: ProviderConfig;
-  //   gemini?: ProviderConfig;
+  deepseek?: ProviderConfig;
+  anthropic?: ProviderConfig;
 };
 
 export interface ModelConfig {

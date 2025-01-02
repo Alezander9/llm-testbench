@@ -139,16 +139,18 @@ export const SearchSelector = <T extends Item>({
   }, [items, recentIds]);
 
   const renderTrigger = () => {
+    // The trigger for the agent search is secretly a larger bar so that the popover is centered in the sidebar
     if (variant === "agent") {
       return (
-        <Button
-          variant="ghost"
+        <div
           role="combobox"
           aria-expanded={open}
-          className="w-[156px] justify-end px-2 py-0"
+          className="inline-flex items-center gap-2 w-full justify-end"
         >
-          <Search style={{ width: "24px", height: "24px" }} />
-        </Button>
+          <IconButton variant="ghost">
+            <Search style={{ width: "24px", height: "24px" }} />
+          </IconButton>
+        </div>
       );
     }
 

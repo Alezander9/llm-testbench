@@ -587,3 +587,15 @@ export const internalDeleteTestResponse = internalMutation({
     await ctx.db.delete(args.responseId);
   },
 });
+
+export const updateFolderExpandedState = mutation({
+  args: {
+    folderId: v.id("agentFolders"),
+    expanded: v.boolean(),
+  },
+  async handler(ctx, args) {
+    await ctx.db.patch(args.folderId, {
+      expanded: args.expanded,
+    });
+  },
+});

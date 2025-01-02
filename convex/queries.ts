@@ -254,6 +254,7 @@ export const getUserAgentTree = query({
           children: buildTree(folder._id, depth + 1),
           parentFolderId: folder.parentFolderId,
           depth: depth,
+          expanded: folder.expanded ?? false,
         })),
         ...childAgents.map((agent) => ({
           id: agent._id,

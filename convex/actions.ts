@@ -46,6 +46,12 @@ LLMFactory.initialize({
     apiKey: process.env.OPENAI_API_KEY!,
     organizationId: process.env.OPENAI_ORG_ID,
   },
+  deepseek: {
+    apiKey: process.env.DEEPSEEK_API_KEY!,
+  },
+  anthropic: {
+    apiKey: process.env.ANTHROPIC_API_KEY!,
+  },
 });
 
 // Chat Completion Actions
@@ -317,10 +323,15 @@ export const internalGenerateSingleResponse = internalAction({
       },
     ];
 
+    let provider: LLMProvider = "openai";
+    if (args.agentModel.includes("deepseek")) {
+      provider = "deepseek";
+    } else if (args.agentModel.includes("claude")) {
+      provider = "anthropic";
+    }
     const modelConfig: ModelConfig = {
-      provider: "openai",
+      provider: provider,
       modelId: args.agentModel,
-      temperature: 0.7,
       maxTokens: 1000,
     };
 
@@ -393,10 +404,15 @@ export const generatePreviewResponse = action({
       },
     ];
 
+    let provider: LLMProvider = "openai";
+    if (args.agentModel.includes("deepseek")) {
+      provider = "deepseek";
+    } else if (args.agentModel.includes("claude")) {
+      provider = "anthropic";
+    }
     const modelConfig: ModelConfig = {
-      provider: "openai",
+      provider: provider,
       modelId: args.agentModel,
-      temperature: 0.7,
       maxTokens: 1000,
     };
 

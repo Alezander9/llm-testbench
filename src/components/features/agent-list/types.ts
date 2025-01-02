@@ -9,6 +9,7 @@ export interface TreeItemType {
   parentFolderId?: Id<"agentFolders"> | null;
   isRenaming?: boolean;
   score?: number;
+  expanded?: boolean;
   depth: number;
 }
 

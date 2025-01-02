@@ -8,7 +8,8 @@ import {
   StreamingLLMResponse,
 } from "./types";
 import { OpenAIProvider } from "./providers/openai";
-
+import { DeepSeekProvider } from "./providers/deepseek";
+import { AnthropicProvider } from "./providers/anthropic";
 export class LLMFactory {
   private static providers: Map<LLMProvider, LLMProviderInterface> = new Map();
 
@@ -16,6 +17,12 @@ export class LLMFactory {
     // Initialize providers with their configs
     if (configs.openai) {
       this.providers.set("openai", new OpenAIProvider(configs.openai));
+    }
+    if (configs.deepseek) {
+      this.providers.set("deepseek", new DeepSeekProvider(configs.deepseek));
+    }
+    if (configs.anthropic) {
+      this.providers.set("anthropic", new AnthropicProvider(configs.anthropic));
     }
     // Add other providers here as they're implemented
     // if (configs.anthropic) {
