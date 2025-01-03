@@ -112,7 +112,7 @@ export const SearchSelector = <T extends Item>({
   variant = "testcase",
 }: SearchSelectorProps<T>) => {
   const [open, setOpen] = React.useState(false);
-  const [search, setSearch] = React.useState("");
+  const [search, setSearch] = React.useState<string>("");
 
   const selectedItem = items?.find((item) => item._id === value);
 

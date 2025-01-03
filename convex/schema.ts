@@ -34,6 +34,41 @@ export default defineSchema({
     chatWindowHeight: v.optional(v.number()),
   }).index("by_userId", ["userId"]),
 
+  apiKeys: defineTable({
+    userId: v.id("users"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+    encryptedKey: v.string(),
+    isValid: v.boolean(),
+    lastValidated: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_provider", ["userId", "provider"]),
+
+  apiKeyLogs: defineTable({
+    userId: v.id("users"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+    action: v.union(
+      v.literal("create"),
+      v.literal("update"),
+      v.literal("delete"),
+      v.literal("validate"),
+      v.literal("use")
+    ),
+    timestamp: v.number(),
+    success: v.boolean(),
+    errorMessage: v.optional(v.string()),
+  }).index("by_userId", ["userId"]),
+
   agentFolders: defineTable({
     userId: v.id("users"),
     name: v.string(),

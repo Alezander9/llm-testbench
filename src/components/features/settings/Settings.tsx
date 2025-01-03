@@ -5,13 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../../components/ui/dialog";
-import {
-  Settings as SettingsIcon,
-  Monitor,
-  HelpCircle,
-  CreditCard,
-  X,
-} from "lucide-react";
+import { Monitor, HelpCircle, CreditCard, X, Key } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { IconButton } from "../../../components/ui/icon-button";
@@ -28,16 +22,16 @@ import { api } from "../../../../convex/_generated/api";
 import { useGetUser } from "../../../hooks/useGetUser";
 
 const SECTIONS = [
-  { id: "general", label: "General", icon: SettingsIcon },
-  { id: "appearance", label: "Appearance", icon: Monitor },
-  { id: "help", label: "Help Center", icon: HelpCircle },
+  { id: "dashboard", label: "Dashboard", icon: Monitor },
+  { id: "apikeys", label: "API Keys", icon: Key },
+  { id: "feedback", label: "Feedback", icon: HelpCircle },
   { id: "billing", label: "Billing", icon: CreditCard },
 ] as const;
 
 export function Settings() {
   const currentUser = useGetUser();
   const [section, setSection] =
-    useState<(typeof SECTIONS)[number]["id"]>("general");
+    useState<(typeof SECTIONS)[number]["id"]>("dashboard");
   const {
     gridColumns,
     setGridColumns,
@@ -82,7 +76,7 @@ export function Settings() {
 
           {/* Content */}
           <div className="flex-1 p-6 overflow-y-auto">
-            {section === "general" && (
+            {section === "dashboard" && (
               <div className="space-y-6">
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium">Grid Columns</h3>

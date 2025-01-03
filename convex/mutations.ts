@@ -599,3 +599,133 @@ export const updateFolderExpandedState = mutation({
     });
   },
 });
+
+export const createApiKey = internalMutation({
+  args: {
+    userId: v.id("users"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+    encryptedKey: v.string(),
+    isValid: v.boolean(),
+    lastValidated: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Delete any existing key for this provider first
+    const existing = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_userId_provider", (q) =>
+        q.eq("userId", args.userId).eq("provider", args.provider)
+      )
+      .first();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+
+    // Create new key
+    return await ctx.db.insert("apiKeys", {
+      userId: args.userId,
+      provider: args.provider,
+      encryptedKey: args.encryptedKey,
+      isValid: args.isValid,
+      lastValidated: args.lastValidated,
+      createdAt: args.createdAt,
+      updatedAt: args.updatedAt,
+    });
+  },
+});
+
+export const updateApiKey = internalMutation({
+  args: {
+    userId: v.id("users"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+    encryptedKey: v.string(),
+    isValid: v.boolean(),
+    lastValidated: v.number(),
+    updatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_userId_provider", (q) =>
+        q.eq("userId", args.userId).eq("provider", args.provider)
+      )
+      .first();
+
+    if (!existing) {
+      throw new Error("API key not found");
+    }
+
+    return await ctx.db.patch(existing._id, {
+      encryptedKey: args.encryptedKey,
+      isValid: args.isValid,
+      lastValidated: args.lastValidated,
+      updatedAt: args.updatedAt,
+    });
+  },
+});
+
+export const deleteApiKey = internalMutation({
+  args: {
+    userId: v.id("users"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_userId_provider", (q) =>
+        q.eq("userId", args.userId).eq("provider", args.provider)
+      )
+      .first();
+
+    if (!existing) {
+      throw new Error("API key not found");
+    }
+
+    await ctx.db.delete(existing._id);
+  },
+});
+
+export const logApiKeyAction = internalMutation({
+  args: {
+    userId: v.id("users"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+    action: v.union(
+      v.literal("create"),
+      v.literal("update"),
+      v.literal("delete"),
+      v.literal("validate"),
+      v.literal("use")
+    ),
+    timestamp: v.number(),
+    success: v.boolean(),
+    errorMessage: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("apiKeyLogs", {
+      userId: args.userId,
+      provider: args.provider,
+      action: args.action,
+      timestamp: args.timestamp,
+      success: args.success,
+      errorMessage: args.errorMessage,
+    });
+  },
+});

@@ -30,6 +30,26 @@ export class LLMFactory {
     // }
   }
 
+  // Method to switch specific provider's config
+  static updateProviderConfig(provider: LLMProvider, config: ProviderConfig) {
+    switch (provider) {
+      case "openai":
+        this.providers.set("openai", new OpenAIProvider(config));
+        break;
+      case "anthropic":
+        this.providers.set("anthropic", new AnthropicProvider(config));
+        break;
+      case "deepseek":
+        this.providers.set("deepseek", new DeepSeekProvider(config));
+        break;
+    }
+  }
+
+  // Reset specific provider to default config
+  static resetProvider(provider: LLMProvider, defaultConfig: ProviderConfig) {
+    this.updateProviderConfig(provider, defaultConfig);
+  }
+
   static getProvider(provider: LLMProvider): LLMProviderInterface {
     const implementation = this.providers.get(provider);
     if (!implementation) {

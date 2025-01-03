@@ -326,3 +326,40 @@ export const internalGetAgent = internalQuery({
     return await ctx.db.get(args.agentId);
   },
 });
+
+export const getApiKey = internalQuery({
+  args: {
+    userId: v.id("users"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("apiKeys")
+      .withIndex("by_userId_provider", (q) =>
+        q.eq("userId", args.userId).eq("provider", args.provider)
+      )
+      .first();
+  },
+});
+
+export const getUserApiKeys = internalQuery({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const keys = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    // Return keys without exposing encrypted key data
+    return keys.map(({ encryptedKey, ...keyInfo }) => ({
+      ...keyInfo,
+      hasKey: true,
+    }));
+  },
+});

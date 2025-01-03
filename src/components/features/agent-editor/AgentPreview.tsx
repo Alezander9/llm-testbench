@@ -33,27 +33,16 @@ export const AgentPreview = () => {
     previewAgent.model !== editorAgent.model;
 
   const sendMessage = async (content: string) => {
-    console.log("🚀 Starting sendMessage");
     if (
       !content.trim() ||
       !currentUser?._id ||
       !previewAgent.model ||
       !previewAgent.prompt
     ) {
-      console.log("❌ Validation failed", {
-        content,
-        currentUser,
-        model: previewAgent.model,
-        prompt: previewAgent.prompt,
-      });
       return;
     }
 
-    // Set typing state first and wait for it to update
-    console.log("📝 Setting isTyping to true");
     setIsTyping(true);
-
-    // Wait for state to update
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     try {
@@ -65,17 +54,14 @@ export const AgentPreview = () => {
         id: userMessageId,
       });
 
-      // Clear input after message is added
       setUserInput("");
 
-      console.log("🔄 Starting API call");
       const response = await generatePreview({
         userId: currentUser._id,
         questionContent: content,
         agentPrompt: previewAgent.prompt,
         agentModel: previewAgent.model,
       });
-      console.log("✅ API call successful: ", response.content);
 
       // Add assistant response
       addChatMessage({
@@ -84,7 +70,6 @@ export const AgentPreview = () => {
         id: nanoid(),
       });
     } catch (error) {
-      console.error("❌ Failed to generate response:", error);
       toast({
         title: "Error",
         description: "Failed to generate response. Please try again.",
@@ -96,7 +81,6 @@ export const AgentPreview = () => {
         id: nanoid(),
       });
     } finally {
-      console.log("🏁 Setting isTyping to false");
       setIsTyping(false);
     }
   };
@@ -152,11 +136,6 @@ export const AgentPreview = () => {
     }
   };
 
-  // Add an effect to monitor isTyping changes
-  useEffect(() => {
-    console.log("🔄 isTyping changed to:", isTyping);
-  }, [isTyping]);
-
   // Add this effect to handle focusing
   useEffect(() => {
     if (!isTyping && textareaRef.current) {
@@ -166,9 +145,6 @@ export const AgentPreview = () => {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col h-full gap-4 p-4">
-      <div className="text-xs text-muted-foreground">
-        isTyping: {isTyping.toString()}
-      </div>
       <div className="flex-1 relative">
         {needsRefresh && (
           <>

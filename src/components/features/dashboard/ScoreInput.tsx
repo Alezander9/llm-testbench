@@ -28,7 +28,7 @@ export interface ScoreInputProps
 }
 
 const ScoreInput = React.forwardRef<HTMLInputElement, ScoreInputProps>(
-  ({ className, variant, onScoreChange, onChange, ...props }, ref) => {
+  ({ className, variant, onScoreChange, onChange, value, ...props }, ref) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
       // Allow empty string or valid numbers
@@ -57,6 +57,7 @@ const ScoreInput = React.forwardRef<HTMLInputElement, ScoreInputProps>(
         placeholder="5.0"
         step="0.1"
         min="0"
+        value={value ?? ""}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         ref={ref}

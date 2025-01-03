@@ -14,6 +14,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <ClerkProvider
         publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+        signInForceRedirectUrl="/home"
+        signUpForceRedirectUrl="/home"
+        afterSignOutUrl="/landing"
       >
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           <App />

@@ -1,12 +1,11 @@
 import { v } from "convex/values";
-import { action, internalAction } from "./_generated/server";
+import { action, ActionCtx, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { LLMFactory } from "../src/components/features/llm/factory";
-import { FileProcessingService } from "../src/components/features/llm/services/fileProcessing";
+// import { FileProcessingService } from "../src/components/features/llm/services/fileProcessing";
 import {
-  Message,
   ModelConfig,
-  FileProcessingError,
+  // FileProcessingError,
   LLMProvider,
   LLMResponse,
   StreamingLLMResponse,
@@ -19,38 +18,345 @@ type CompletionArgs = {
     role: "system" | "user" | "assistant";
     content: string;
   }>;
-  modelConfig: {
-    provider: LLMProvider;
-    modelId: string;
-    temperature?: number;
-    maxTokens?: number;
-  };
+  modelName: string;
+  userId: Id<"users">;
+  useDefault: boolean;
+  maxTokens?: number;
+  temperature?: number;
 };
 
-type FileProcessingArgs = {
-  fileData: string;
-  fileName: string;
-  fileType: string;
-  extractionPrompt: string;
-  modelConfig: {
-    provider: LLMProvider;
-    modelId: string;
-    temperature?: number;
-    maxTokens?: number;
-  };
-};
+// type FileProcessingArgs = {
+//   fileData: string;
+//   fileName: string;
+//   fileType: string;
+//   extractionPrompt: string;
+//   modelConfig: {
+//     provider: LLMProvider;
+//     modelId: string;
+//     temperature?: number;
+//     maxTokens?: number;
+//   };
+// };
 
 // Initialize LLM providers
 LLMFactory.initialize({
   openai: {
     apiKey: process.env.OPENAI_API_KEY!,
-    organizationId: process.env.OPENAI_ORG_ID,
   },
   deepseek: {
     apiKey: process.env.DEEPSEEK_API_KEY!,
   },
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY!,
+  },
+});
+
+async function setupModelConfig(
+  ctx: ActionCtx,
+  userId: Id<"users"> | undefined,
+  modelName: string,
+  useDefault: boolean = false,
+  maxTokens: number = 1000,
+  temperature: number = 1.0
+): Promise<ModelConfig> {
+  // Determine provider from model name
+  let provider: LLMProvider = "openai";
+  if (modelName.includes("deepseek")) {
+    provider = "deepseek";
+  } else if (modelName.includes("claude")) {
+    provider = "anthropic";
+  }
+
+  // Default configs
+  const defaultConfigs = {
+    openai: {
+      apiKey: process.env.OPENAI_API_KEY!,
+    },
+    deepseek: {
+      apiKey: process.env.DEEPSEEK_API_KEY!,
+    },
+    anthropic: {
+      apiKey: process.env.ANTHROPIC_API_KEY!,
+    },
+  };
+
+  // Initialize with default config
+  LLMFactory.initialize(defaultConfigs);
+
+  // If user provided and not requesting default
+  if (userId && !useDefault) {
+    try {
+      // Try to get user's API key
+      const apiKey = await ctx.runQuery(internal.queries.getApiKey, {
+        userId,
+        provider,
+      });
+
+      if (apiKey?.isValid) {
+        // Decrypt the key
+        const decryptedKey = await ctx.runAction(
+          internal.actions.getDecryptedApiKey,
+          {
+            userId,
+            provider,
+          }
+        );
+
+        // Update provider with user's key
+        LLMFactory.updateProviderConfig(provider, {
+          ...defaultConfigs[provider],
+          apiKey: decryptedKey,
+        });
+      }
+    } catch (error) {
+      console.warn(`Failed to get user API key for ${provider}, using default`);
+    }
+  }
+
+  return {
+    provider,
+    modelId: modelName,
+    maxTokens: maxTokens,
+    temperature: temperature,
+  };
+}
+
+// Validate API key with provider
+export const validateApiKey = internalAction({
+  args: {
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+    apiKey: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    try {
+      let isValid = false;
+      switch (args.provider) {
+        case "openai":
+          const openaiResponse = await fetch(
+            "https://api.openai.com/v1/models",
+            {
+              headers: {
+                Authorization: `Bearer ${args.apiKey}`,
+              },
+            }
+          );
+          isValid = openaiResponse.status === 200;
+          break;
+
+        case "anthropic":
+          const anthropicResponse = await fetch(
+            "https://api.anthropic.com/v1/messages",
+            {
+              method: "POST",
+              headers: {
+                "x-api-key": args.apiKey,
+                "anthropic-version": "2023-06-01",
+              },
+              body: JSON.stringify({
+                model: "claude-3-opus-20240229",
+                max_tokens: 1,
+                messages: [{ role: "user", content: "test" }],
+              }),
+            }
+          );
+          isValid = anthropicResponse.status === 200;
+          break;
+
+        case "deepseek":
+          const deepseekResponse = await fetch(
+            "https://api.deepseek.com/v1/models",
+            {
+              headers: {
+                Authorization: `Bearer ${args.apiKey}`,
+              },
+            }
+          );
+          isValid = deepseekResponse.status === 200;
+          break;
+      }
+
+      return isValid;
+    } catch (error) {
+      console.error(`Error validating ${args.provider} API key:`, error);
+      return false;
+    }
+  },
+});
+
+export const generateRandomEncryptionKey = action({
+  args: {},
+  handler: async (_ctx) => {
+    const key = crypto.getRandomValues(new Uint8Array(32));
+    const base64Key = btoa(String.fromCharCode(...key));
+    console.log("Generated Master Key:", base64Key);
+    return base64Key;
+  },
+});
+
+// Add or update API key
+export const upsertApiKey = action({
+  args: {
+    userId: v.id("users"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+    apiKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // First validate the API key
+      const isValid = await ctx.runAction(internal.actions.validateApiKey, {
+        provider: args.provider,
+        apiKey: args.apiKey,
+      });
+
+      if (!isValid) {
+        throw new Error("Invalid API key");
+      }
+
+      // Encrypt the API key
+      const encryptedKey = await ctx.runAction(
+        internal.nodeActions.encryptApiKey,
+        {
+          apiKey: args.apiKey,
+        }
+      );
+
+      // Check if key already exists
+      const existingKey = await ctx.runQuery(internal.queries.getApiKey, {
+        userId: args.userId,
+        provider: args.provider,
+      });
+
+      const timestamp = Date.now();
+
+      if (existingKey) {
+        // Update existing key
+        await ctx.runMutation(internal.mutations.updateApiKey, {
+          userId: args.userId,
+          provider: args.provider,
+          encryptedKey,
+          isValid: true,
+          lastValidated: timestamp,
+          updatedAt: timestamp,
+        });
+      } else {
+        // Create new key
+        await ctx.runMutation(internal.mutations.createApiKey, {
+          userId: args.userId,
+          provider: args.provider,
+          encryptedKey,
+          isValid: true,
+          lastValidated: timestamp,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+
+      // Log the action
+      await ctx.runMutation(internal.mutations.logApiKeyAction, {
+        userId: args.userId,
+        provider: args.provider,
+        action: existingKey ? "update" : "create",
+        timestamp,
+        success: true,
+      });
+
+      return true;
+    } catch (error) {
+      // Log the failed action
+      await ctx.runMutation(internal.mutations.logApiKeyAction, {
+        userId: args.userId,
+        provider: args.provider,
+        action: "create",
+        timestamp: Date.now(),
+        success: false,
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+      });
+
+      throw error;
+    }
+  },
+});
+
+// Delete API key
+export const deleteApiKey = action({
+  args: {
+    userId: v.id("users"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const timestamp = Date.now();
+
+    try {
+      await ctx.runMutation(internal.mutations.deleteApiKey, {
+        userId: args.userId,
+        provider: args.provider,
+      });
+
+      await ctx.runMutation(internal.mutations.logApiKeyAction, {
+        userId: args.userId,
+        provider: args.provider,
+        action: "delete",
+        timestamp,
+        success: true,
+      });
+
+      return true;
+    } catch (error) {
+      await ctx.runMutation(internal.mutations.logApiKeyAction, {
+        userId: args.userId,
+        provider: args.provider,
+        action: "delete",
+        timestamp,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+      });
+
+      throw error;
+    }
+  },
+});
+
+// Get decrypted API key for use
+export const getDecryptedApiKey = internalAction({
+  args: {
+    userId: v.id("users"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+  },
+  handler: async (ctx, args): Promise<string> => {
+    // Get encrypted key
+    const apiKey = await ctx.runQuery(internal.queries.getApiKey, {
+      userId: args.userId,
+      provider: args.provider,
+    });
+
+    if (!apiKey || !apiKey.isValid) {
+      throw new Error(`No valid API key found for ${args.provider}`);
+    }
+
+    // Decrypt and return
+    const decryptedKey = await ctx.runAction(
+      internal.nodeActions.decryptApiKey,
+      {
+        encryptedKey: apiKey.encryptedKey,
+      }
+    );
+    return decryptedKey;
   },
 });
 
@@ -67,18 +373,26 @@ export const internalGenerateCompletion = internalAction({
         content: v.string(),
       })
     ),
-    modelConfig: v.object({
-      provider: v.string(),
-      modelId: v.string(),
-      temperature: v.optional(v.number()),
-      maxTokens: v.optional(v.number()),
-    }),
+    modelName: v.string(),
+    userId: v.id("users"),
+    useDefault: v.boolean(),
+    maxTokens: v.optional(v.number()),
+    temperature: v.optional(v.number()),
   },
   handler: async (ctx, args: CompletionArgs) => {
     try {
+      const modelConfig = await setupModelConfig(
+        ctx,
+        args.userId,
+        args.modelName,
+        args.useDefault,
+        args.maxTokens,
+        args.temperature
+      );
+
       const response = await LLMFactory.generateCompletion(
         args.messages,
-        args.modelConfig
+        modelConfig
       );
       return response;
     } catch (error) {
@@ -100,12 +414,11 @@ export const generateCompletion = action({
         content: v.string(),
       })
     ),
-    modelConfig: v.object({
-      provider: v.string(),
-      modelId: v.string(),
-      temperature: v.optional(v.number()),
-      maxTokens: v.optional(v.number()),
-    }),
+    modelName: v.string(),
+    userId: v.id("users"),
+    useDefault: v.boolean(),
+    maxTokens: v.optional(v.number()),
+    temperature: v.optional(v.number()),
   },
   handler: async (ctx, args: CompletionArgs): Promise<LLMResponse> => {
     return await ctx.runAction(
@@ -116,124 +429,125 @@ export const generateCompletion = action({
 });
 
 // File Processing Actions
-export const internalProcessFile = internalAction({
-  args: {
-    fileData: v.string(),
-    fileName: v.string(),
-    fileType: v.string(),
-    extractionPrompt: v.string(),
-    modelConfig: v.object({
-      provider: v.string(),
-      modelId: v.string(),
-      temperature: v.optional(v.number()),
-      maxTokens: v.optional(v.number()),
-    }),
-  },
-  handler: async (ctx, args: FileProcessingArgs) => {
-    const binaryData = Uint8Array.from(atob(args.fileData), (c) =>
-      c.charCodeAt(0)
-    );
+// TODO: update file processing to handle new model config helper function which supports AI Key switching
+// export const internalProcessFile = internalAction({
+//   args: {
+//     fileData: v.string(),
+//     fileName: v.string(),
+//     fileType: v.string(),
+//     extractionPrompt: v.string(),
+//     modelConfig: v.object({
+//       provider: v.string(),
+//       modelId: v.string(),
+//       temperature: v.optional(v.number()),
+//       maxTokens: v.optional(v.number()),
+//     }),
+//   },
+//   handler: async (ctx, args: FileProcessingArgs) => {
+//     const binaryData = Uint8Array.from(atob(args.fileData), (c) =>
+//       c.charCodeAt(0)
+//     );
 
-    const fileProcessor = new FileProcessingService(
-      args.modelConfig.provider as LLMProvider,
-      {
-        maxFileSizeBytes: 10 * 1024 * 1024,
-        validFileTypes: ["application/pdf", "text/plain", "application/msword"],
-        vectorStoreExpiryDays: 1,
-      }
-    );
+//     const fileProcessor = new FileProcessingService(
+//       args.modelConfig.provider as LLMProvider,
+//       {
+//         maxFileSizeBytes: 10 * 1024 * 1024,
+//         validFileTypes: ["application/pdf", "text/plain", "application/msword"],
+//         vectorStoreExpiryDays: 1,
+//       }
+//     );
 
-    try {
-      const { fileId, vectorStoreId } = await fileProcessor.processFile({
-        data: binaryData,
-        name: args.fileName,
-        type: args.fileType,
-      });
+//     try {
+//       const { fileId, vectorStoreId } = await fileProcessor.processFile({
+//         data: binaryData,
+//         name: args.fileName,
+//         type: args.fileType,
+//       });
 
-      const provider = LLMFactory.getProvider(
-        args.modelConfig.provider as LLMProvider
-      );
+//       const provider = LLMFactory.getProvider(
+//         args.modelConfig.provider as LLMProvider
+//       );
 
-      const response = await provider.generateCompletion(
-        [
-          { role: "system", content: args.extractionPrompt },
-          {
-            role: "user",
-            content: `Process the content from vector store ${vectorStoreId}`,
-          },
-        ],
-        {
-          ...args.modelConfig,
-          provider: args.modelConfig.provider as LLMProvider,
-        } as ModelConfig
-      );
+//       const response = await provider.generateCompletion(
+//         [
+//           { role: "system", content: args.extractionPrompt },
+//           {
+//             role: "user",
+//             content: `Process the content from vector store ${vectorStoreId}`,
+//           },
+//         ],
+//         {
+//           ...args.modelConfig,
+//           provider: args.modelConfig.provider as LLMProvider,
+//         } as ModelConfig
+//       );
 
-      await fileProcessor.cleanup(fileId, vectorStoreId);
+//       await fileProcessor.cleanup(fileId, vectorStoreId);
 
-      return response;
-    } catch (error) {
-      console.error("Error processing file:", error);
-      if (error instanceof FileProcessingError) {
-        throw error;
-      }
-      throw new FileProcessingError(
-        `Failed to process file: ${error instanceof Error ? error.message : String(error)}`,
-        "PROCESSING_FAILED"
-      );
-    }
-  },
-});
+//       return response;
+//     } catch (error) {
+//       console.error("Error processing file:", error);
+//       if (error instanceof FileProcessingError) {
+//         throw error;
+//       }
+//       throw new FileProcessingError(
+//         `Failed to process file: ${error instanceof Error ? error.message : String(error)}`,
+//         "PROCESSING_FAILED"
+//       );
+//     }
+//   },
+// });
 
-export const processFile = action({
-  args: {
-    fileData: v.string(),
-    fileName: v.string(),
-    fileType: v.string(),
-    extractionPrompt: v.string(),
-    modelConfig: v.object({
-      provider: v.string(),
-      modelId: v.string(),
-      temperature: v.optional(v.number()),
-      maxTokens: v.optional(v.number()),
-    }),
-  },
-  handler: async (ctx, args: FileProcessingArgs): Promise<LLMResponse> => {
-    const sizeInBytes =
-      (args.fileData.length * 3) / 4 -
-      (args.fileData.match(/=+$/)?.[0]?.length || 0);
+// export const processFile = action({
+//   args: {
+//     fileData: v.string(),
+//     fileName: v.string(),
+//     fileType: v.string(),
+//     extractionPrompt: v.string(),
+//     modelConfig: v.object({
+//       provider: v.string(),
+//       modelId: v.string(),
+//       temperature: v.optional(v.number()),
+//       maxTokens: v.optional(v.number()),
+//     }),
+//   },
+//   handler: async (ctx, args: FileProcessingArgs): Promise<LLMResponse> => {
+//     const sizeInBytes =
+//       (args.fileData.length * 3) / 4 -
+//       (args.fileData.match(/=+$/)?.[0]?.length || 0);
 
-    if (sizeInBytes > 10 * 1024 * 1024) {
-      throw new FileProcessingError(
-        "File too large (max 10MB)",
-        "FILE_TOO_LARGE"
-      );
-    }
+//     if (sizeInBytes > 10 * 1024 * 1024) {
+//       throw new FileProcessingError(
+//         "File too large (max 10MB)",
+//         "FILE_TOO_LARGE"
+//       );
+//     }
 
-    const validFileTypes = [
-      "application/pdf",
-      "text/plain",
-      "application/msword",
-    ];
-    if (!validFileTypes.includes(args.fileType)) {
-      throw new FileProcessingError(
-        "Unsupported file type",
-        "INVALID_FILE_TYPE"
-      );
-    }
+//     const validFileTypes = [
+//       "application/pdf",
+//       "text/plain",
+//       "application/msword",
+//     ];
+//     if (!validFileTypes.includes(args.fileType)) {
+//       throw new FileProcessingError(
+//         "Unsupported file type",
+//         "INVALID_FILE_TYPE"
+//       );
+//     }
 
-    try {
-      return await ctx.runAction(internal.actions.internalProcessFile, args);
-    } catch (error) {
-      if (error instanceof FileProcessingError) {
-        throw error;
-      }
-      throw new FileProcessingError(
-        `Failed to process file: ${error instanceof Error ? error.message : String(error)}`,
-        "PROCESSING_FAILED"
-      );
-    }
-  },
-});
+//     try {
+//       return await ctx.runAction(internal.actions.internalProcessFile, args);
+//     } catch (error) {
+//       if (error instanceof FileProcessingError) {
+//         throw error;
+//       }
+//       throw new FileProcessingError(
+//         `Failed to process file: ${error instanceof Error ? error.message : String(error)}`,
+//         "PROCESSING_FAILED"
+//       );
+//     }
+//   },
+// });
 
 // Streaming Chat Completion Actions
 export const internalGenerateStreamingCompletion = internalAction({
@@ -248,18 +562,26 @@ export const internalGenerateStreamingCompletion = internalAction({
         content: v.string(),
       })
     ),
-    modelConfig: v.object({
-      provider: v.string(),
-      modelId: v.string(),
-      temperature: v.optional(v.number()),
-      maxTokens: v.optional(v.number()),
-    }),
+    modelName: v.string(),
+    userId: v.id("users"),
+    useDefault: v.boolean(),
+    maxTokens: v.optional(v.number()),
+    temperature: v.optional(v.number()),
   },
   handler: async (ctx, args: CompletionArgs): Promise<StreamingLLMResponse> => {
     try {
+      const modelConfig = await setupModelConfig(
+        ctx,
+        args.userId,
+        args.modelName,
+        args.useDefault,
+        args.maxTokens,
+        args.temperature
+      );
+
       const stream = await LLMFactory.generateStream(
         args.messages,
-        args.modelConfig
+        modelConfig
       );
       return stream;
     } catch (error) {
@@ -281,12 +603,11 @@ export const generateStreamingCompletion = action({
         content: v.string(),
       })
     ),
-    modelConfig: v.object({
-      provider: v.string(),
-      modelId: v.string(),
-      temperature: v.optional(v.number()),
-      maxTokens: v.optional(v.number()),
-    }),
+    modelName: v.string(),
+    userId: v.id("users"),
+    useDefault: v.boolean(),
+    maxTokens: v.optional(v.number()),
+    temperature: v.optional(v.number()),
   },
   handler: async (ctx, args: CompletionArgs): Promise<StreamingLLMResponse> => {
     return await ctx.runAction(
@@ -323,24 +644,16 @@ export const internalGenerateSingleResponse = internalAction({
       },
     ];
 
-    let provider: LLMProvider = "openai";
-    if (args.agentModel.includes("deepseek")) {
-      provider = "deepseek";
-    } else if (args.agentModel.includes("claude")) {
-      provider = "anthropic";
-    }
-    const modelConfig: ModelConfig = {
-      provider: provider,
-      modelId: args.agentModel,
-      maxTokens: 1000,
-    };
-
     try {
       const completion = await ctx.runAction(
         internal.actions.internalGenerateCompletion,
         {
           messages,
-          modelConfig,
+          modelName: args.agentModel,
+          userId: args.userId,
+          useDefault: false, // This means we will use the user API key if it exists
+          maxTokens: 1000,
+          temperature: 1.0,
         }
       );
 
@@ -404,24 +717,16 @@ export const generatePreviewResponse = action({
       },
     ];
 
-    let provider: LLMProvider = "openai";
-    if (args.agentModel.includes("deepseek")) {
-      provider = "deepseek";
-    } else if (args.agentModel.includes("claude")) {
-      provider = "anthropic";
-    }
-    const modelConfig: ModelConfig = {
-      provider: provider,
-      modelId: args.agentModel,
-      maxTokens: 1000,
-    };
-
     try {
       const completion = await ctx.runAction(
         internal.actions.internalGenerateCompletion,
         {
           messages,
-          modelConfig,
+          modelName: args.agentModel,
+          userId: args.userId,
+          useDefault: false, // This means we will use the user API key if it exists
+          maxTokens: 1000,
+          temperature: 1.0,
         }
       );
 

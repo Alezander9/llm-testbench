@@ -19,7 +19,7 @@ export class OpenAIProvider implements LLMProviderInterface {
   constructor(config: ProviderConfig) {
     this.client = new OpenAI({
       apiKey: config.apiKey,
-      organization: config.organizationId,
+      //organization: config.organizationId,
       dangerouslyAllowBrowser: false,
     });
   }

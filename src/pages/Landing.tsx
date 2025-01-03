@@ -2,8 +2,9 @@ import { SignInButton } from "@clerk/clerk-react";
 import { Button } from "../components/ui/button";
 import BoidBackground from "../components/features/landing/BoidBackground";
 import { ArrowRight, Zap, Box, TestTube, Check } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import TheoLogo from "../assets/TheoLogo1024.png";
+import TheoIcon from "../assets/TheoIcon256.png";
 
 interface BoidParams {
   separationDistance: number;
@@ -83,7 +84,9 @@ function Landing() {
   const [currentParams, setCurrentParams] = useState<BoidParams>(
     SECTION_PARAMS.hero
   );
+  const [isBackgroundEnabled, setIsBackgroundEnabled] = useState(true);
   const sectionsRef = useRef<HTMLDivElement>(null);
+  const [showTopBar, setShowTopBar] = useState(false);
 
   const lerp = (start: number, end: number, t: number) => {
     return start * (1 - t) + end * t;
@@ -130,6 +133,49 @@ function Landing() {
     };
   };
 
+  const scrollToSection = useCallback((sectionIndex: number) => {
+    if (!sectionsRef.current) return;
+    const sections = sectionsRef.current.children;
+    const section = sections[sectionIndex] as HTMLElement;
+    window.scrollTo({
+      top: section.offsetTop,
+      behavior: "smooth",
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!sectionsRef.current) return;
+
+      const sections = sectionsRef.current.children;
+      const playgroundSection = sections[sections.length - 1] as HTMLElement;
+      const isInPlayground =
+        window.scrollY + window.innerHeight >= playgroundSection.offsetTop;
+
+      setShowTopBar(
+        (e.clientY < 100 || window.scrollY < 100) && !isInPlayground
+      );
+    };
+
+    const handleScroll = () => {
+      if (!sectionsRef.current) return;
+
+      const sections = sectionsRef.current.children;
+      const playgroundSection = sections[sections.length - 1] as HTMLElement;
+      const isInPlayground =
+        window.scrollY + window.innerHeight >= playgroundSection.offsetTop;
+
+      setShowTopBar(window.scrollY < 100 && !isInPlayground);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => {
       if (!sectionsRef.current) return;
@@ -175,14 +221,54 @@ function Landing() {
 
   return (
     <div className="relative min-h-screen">
+      <div
+        className={`fixed top-0 left-0 right-0 z-30 transition-transform duration-300 ${
+          showTopBar ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
+        <div className="h-16 bg-background/80 backdrop-blur-md border-b">
+          <div className="container mx-auto h-full flex items-center justify-between px-4">
+            <div className="w-20" />
+            <div className="flex items-center gap-6">
+              <Button variant="ghost" onClick={() => scrollToSection(1)}>
+                Features
+              </Button>
+              <Button variant="ghost" onClick={() => scrollToSection(2)}>
+                Why Theo
+              </Button>
+              <Button variant="ghost" onClick={() => scrollToSection(3)}>
+                Pricing
+              </Button>
+            </div>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="secondary"
+                onClick={() => setIsBackgroundEnabled(!isBackgroundEnabled)}
+              >
+                <img
+                  src={TheoIcon}
+                  alt="Theo Icon"
+                  className="w-[22px] h-[22px]"
+                />
+                {isBackgroundEnabled ? "Disable" : "Enable"}
+              </Button>
+              <SignInButton>
+                <Button>Get Started</Button>
+              </SignInButton>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <img
         src={TheoLogo}
         alt="Theo Logo"
-        className="fixed top-4 left-4 h-20 z-20"
+        className="fixed top-4 left-4 h-10 z-40 cursor-pointer"
+        onClick={() => scrollToSection(0)}
       />
 
       <div className="fixed inset-0 w-screen h-screen overflow-hidden z-0">
-        <BoidBackground {...currentParams} />
+        {isBackgroundEnabled && <BoidBackground {...currentParams} />}
       </div>
 
       <div

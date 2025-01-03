@@ -16,11 +16,127 @@ import {
 import { useState } from "react";
 import { cn } from "../../../lib/utils";
 import { ScrollArea } from "../../../components/ui/scroll-area";
+import { DndContext, closestCenter, DragEndEvent } from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Id } from "../../../../convex/_generated/dataModel";
+
+// Define props interface for SortableQuestion
+interface SortableQuestionProps {
+  id: string | Id<"testQuestions">;
+  question: {
+    content: string;
+    isLocked?: boolean;
+  };
+  index: number;
+  updateQuestion: (index: number, content: string) => void;
+  handleDeleteQuestion: (index: number) => void;
+  handleKeyDown: (e: React.KeyboardEvent, index: number) => void;
+}
+
+// Update SortableQuestion to receive props
+const SortableQuestion = ({
+  id,
+  question,
+  index,
+  updateQuestion,
+  handleDeleteQuestion,
+  handleKeyDown,
+}: SortableQuestionProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "group relative flex gap-3 items-start rounded-lg border p-4",
+        "hover:border-primary/50 transition-colors",
+        isDragging && "opacity-50"
+      )}
+    >
+      {/* Question number & drag handle */}
+      <div className="flex items-center gap-2 mt-2">
+        <span className="text-sm font-medium text-muted-foreground min-w-[1.5rem]">
+          {index + 1}
+        </span>
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <GripVertical className="h-5 w-5 text-muted-foreground" />
+        </div>
+      </div>
+
+      {/* Question content */}
+      <div className="flex-1">
+        <Textarea
+          value={question.content}
+          onChange={(e) => updateQuestion(index, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(e, index)}
+          disabled={question.isLocked}
+          placeholder={`Enter question ${index + 1}...`}
+          variant={question.isLocked ? "viewOnly" : "secondary"}
+          className="resize-none min-h-[60px]"
+        />
+      </div>
+
+      {/* Delete button */}
+      <IconButton
+        variant="ghost"
+        onClick={() => handleDeleteQuestion(index)}
+        className="opacity-0 group-hover:opacity-100 transition-opacity"
+        aria-label="Delete input"
+      >
+        <Trash2 className="h-4 w-4" />
+      </IconButton>
+    </div>
+  );
+};
 
 export const TestCaseQuestionList = () => {
-  const { editorTestCase, addQuestion, removeQuestion, updateQuestion } =
-    useTestCaseEditorStore();
+  const {
+    editorTestCase,
+    addQuestion,
+    removeQuestion,
+    updateQuestion,
+    reorderQuestions,
+  } = useTestCaseEditorStore();
   const [questionToDelete, setQuestionToDelete] = useState<number | null>(null);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = editorTestCase.questions.findIndex(
+        (q) => (q.id || `question-${q.orderIndex}`) === active.id
+      );
+      const newIndex = editorTestCase.questions.findIndex(
+        (q) => (q.id || `question-${q.orderIndex}`) === over.id
+      );
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        reorderQuestions(oldIndex, newIndex);
+      }
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     // Only handle if the question isn't locked
@@ -72,50 +188,31 @@ export const TestCaseQuestionList = () => {
       </div>
 
       <ScrollArea className="h-[calc(100%-40px)]">
-        <div className="space-y-4 pr-4">
-          {editorTestCase.questions.map((question, index) => (
-            <div
-              key={index}
-              className={cn(
-                "group relative flex gap-3 items-start rounded-lg border p-4",
-                "hover:border-primary/50 transition-colors"
-              )}
-            >
-              {/* Question number & drag handle (placeholder for now) */}
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-sm font-medium text-muted-foreground min-w-[1.5rem]">
-                  {index + 1}
-                </span>
-                <div className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
-                  <GripVertical className="h-5 w-5 text-muted-foreground" />
-                </div>
-              </div>
-
-              {/* Question content */}
-              <div className="flex-1">
-                <Textarea
-                  value={question.content}
-                  onChange={(e) => updateQuestion(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, index)}
-                  disabled={question.isLocked}
-                  placeholder={`Enter question ${index + 1}...`}
-                  variant={question.isLocked ? "viewOnly" : "secondary"}
-                  className="resize-none min-h-[60px]"
+        <DndContext
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={editorTestCase.questions.map(
+              (q) => q.id || `question-${q.orderIndex}`
+            )}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-4 pr-4">
+              {editorTestCase.questions.map((question, index) => (
+                <SortableQuestion
+                  key={question.id || `question-${index}`}
+                  id={question.id || `question-${index}`}
+                  question={question}
+                  index={index}
+                  updateQuestion={updateQuestion}
+                  handleDeleteQuestion={handleDeleteQuestion}
+                  handleKeyDown={handleKeyDown}
                 />
-              </div>
-
-              {/* Delete button */}
-              <IconButton
-                variant="ghost"
-                onClick={() => handleDeleteQuestion(index)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                aria-label="Delete input"
-              >
-                <Trash2 className="h-4 w-4" />
-              </IconButton>
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       </ScrollArea>
 
       {/* Delete confirmation dialog */}
