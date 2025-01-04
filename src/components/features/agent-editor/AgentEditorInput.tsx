@@ -35,9 +35,7 @@ export const AgentEditorInput = ({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium">
-          {viewOnlyMode ? "Compare With" : "Name"}
-        </span>
+        <span className="text-sm font-medium">Name</span>
         {viewOnlyMode ? (
           <Select
             value={comparisonAgent._id || undefined}

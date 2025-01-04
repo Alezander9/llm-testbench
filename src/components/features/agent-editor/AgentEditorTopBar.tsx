@@ -6,10 +6,12 @@ import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useGetUser } from "../../../hooks/useGetUser";
 import { useToast } from "../../../hooks/use-toast";
+import { useDashboardStore } from "../../../stores/dashboard";
 
 export const AgentEditorTopBar = () => {
   const currentUser = useGetUser();
   const { mode, editorAgent, reset } = useAgentEditorStore();
+  const { setSelectedAgentId } = useDashboardStore();
   const createAgent = useMutation(api.mutations.createAgent);
   const { toast } = useToast();
 
@@ -58,7 +60,7 @@ export const AgentEditorTopBar = () => {
     }
 
     try {
-      await createAgent({
+      const newAgentId = await createAgent({
         userId: currentUser._id,
         name: editorAgent.name,
         model: editorAgent.model,
@@ -68,6 +70,7 @@ export const AgentEditorTopBar = () => {
         title: "Success",
         description: "Agent created successfully!",
       });
+      setSelectedAgentId(newAgentId);
       handleBack();
     } catch (error) {
       console.error("Failed to create agent:", error);

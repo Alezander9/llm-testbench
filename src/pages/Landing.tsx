@@ -1,7 +1,14 @@
 import { SignInButton } from "@clerk/clerk-react";
 import { Button } from "../components/ui/button";
 import BoidBackground from "../components/features/landing/BoidBackground";
-import { ArrowRight, Zap, Box, TestTube, Check } from "lucide-react";
+import {
+  ArrowRight,
+  Zap,
+  Box,
+  TestTube,
+  Check,
+  CircleHelp,
+} from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import TheoLogo from "../assets/TheoLogo1024.png";
 import TheoIcon from "../assets/TheoIcon256.png";
@@ -314,12 +321,13 @@ function Landing() {
             <h1
               className={`${isMobile ? "text-4xl" : "text-6xl"} font-bold text-center mb-6 cursor-default`}
             >
-              Theo: A Prompt Engineering Studio
+              Your Human-Centered Prompt <br /> Engineering Studio
             </h1>
             <p
               className={`${isMobile ? "text-lg" : "text-xl"} text-center mb-8 max-w-2xl mx-auto`}
             >
-              Design, test, and perfect your AI agents.
+              Design, test, and perfect your AI agents for sensational user
+              experience.
             </p>
             <div className="flex justify-center gap-4">
               <SignInButton>
@@ -346,12 +354,12 @@ function Landing() {
               <FeatureCard
                 icon={<Zap />}
                 title="Aggregate Model Inputs"
-                description="Test multiple models simultaneously. Compare responses and find the perfect fit for your use case."
+                description="Test across multiple inputs simultaneously. Compare responses and find the perfect fit for your use case."
               />
               <FeatureCard
                 icon={<TestTube />}
                 title="Test, Iterate, Improve"
-                description="See results side by side. Make data-driven decisions about your prompt engineering."
+                description="See results side by side. Quickly test prompt updates and make data-driven improvements."
               />
             </div>
           </div>
@@ -365,21 +373,21 @@ function Landing() {
               <div className="grid grid-cols-1 gap-6 auto-rows-fr">
                 <WhyCard
                   title="Human-Centered Design"
-                  description="Focus on making AI interactions feel natural and engaging. It's not just about accuracy—it's about experience."
+                  description="Our emphasis is on making AI interactions feel natural and engaging. It's not just about accuracy—it's about experience."
                 />
                 <WhyCard
                   title="Avoid Costly Fine-tuning"
-                  description="Discover the full potential of existing models through strategic prompting before investing in expensive fine-tuning."
+                  description="Discover the full potential of existing models through strategic prompting without costs of fine-tuning."
                 />
                 <WhyCard
                   title="Deploy with Confidence"
-                  description="Thoroughly test your prompts against edge cases and ensure consistent, high-quality responses."
+                  description="Thoroughly test your prompts against edge cases, ensuring consistent, high-quality responses."
                 />
               </div>
               <div className="grid grid-cols-1 gap-6 auto-rows-fr">
                 <WhyCard
                   title="Multi-model Testing"
-                  description="Break down complex agent flows and test different models for each component."
+                  description="Break down complex multi-agent flows and test variations on each component."
                 />
                 <WhyCard
                   title="Prompt Security"
@@ -387,7 +395,7 @@ function Landing() {
                 />
                 <WhyCard
                   title="Optimize Model Selection"
-                  description="Find the most cost-effective models that meet your quality requirements."
+                  description="Utilize our range of compatible providers to find the most cost-effective models that meet your requirements."
                 />
               </div>
             </div>
@@ -405,8 +413,9 @@ function Landing() {
                 <h3 className="text-2xl font-bold mb-4">Free</h3>
                 <ul className="space-y-4 mb-8 flex-grow">
                   <PricingFeature text="Access to all features and models" />
-                  <PricingFeature text="Pay for tokens as you go" />
-                  <PricingFeature text="No hidden fees" />
+                  <PricingFeature text="100 usage credits provided for free" />
+                  <PricingFeature text="Pay for additional usage as you go" />
+                  <PricingFeature text="Can use your own API keys" />
                 </ul>
                 <SignInButton>
                   <Button className="w-full" size="lg">
@@ -416,11 +425,19 @@ function Landing() {
               </div>
               <div className="p-8 rounded-lg bg-black/5 backdrop-blur-sm flex flex-col">
                 <h3 className="text-2xl font-bold mb-4">Enterprise</h3>
-                <p className="mb-8 flex-grow">
-                  Interested in using Theo at scale? Want customizations for
-                  internal use?
-                </p>
-                <Button variant="secondary" className="w-full" size="lg">
+                <ul className="space-y-4 mb-8 flex-grow">
+                  <PricingQuestion text="Interested in using Theo at scale?" />
+                  <PricingQuestion text="Want customizations for internal use?" />
+                  <PricingQuestion text="Want to use Theo for your own proprietary models?" />
+                </ul>
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  size="lg"
+                  onClick={() =>
+                    (window.location.href = "mailto:alexander@trytheo.dev")
+                  }
+                >
                   Contact Us
                 </Button>
               </div>
@@ -487,6 +504,15 @@ function PricingFeature({ text }: { text: string }) {
   return (
     <div className="flex items-center gap-2">
       <Check className="w-5 h-5 text-primary" />
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function PricingQuestion({ text }: { text: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <CircleHelp className="w-5 h-5 text-foreground" />
       <span>{text}</span>
     </div>
   );
