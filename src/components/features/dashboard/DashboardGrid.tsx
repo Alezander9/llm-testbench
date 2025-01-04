@@ -49,6 +49,11 @@ export const DashboardGrid = () => {
         const isGenerating = generatingQuestions.has(question._id);
         const isAnswered = responseMap.has(question._id);
 
+        // console.log(`question: ${question._id}`);
+        // console.log(`response: ${response}`);
+        // console.log(`isGenerating: ${isGenerating}`);
+        // console.log(`isAnswered: ${isAnswered}`);
+
         return (
           <ChatWindow
             key={question._id}

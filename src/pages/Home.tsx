@@ -6,8 +6,11 @@ import { Settings } from "../components/features/settings/Settings";
 import { AgentEditorLayout } from "../components/features/agent-editor/AgentEditorLayout";
 import { TestCaseEditorLayout } from "../components/features/test-case-editor/TestCaseEditorLayout";
 import { useSyncUser, useInitializeSettings } from "../hooks";
+import { useIsMobile } from "../hooks/use-mobile";
+import { MobileRestrictionMessage } from "../components/layout/MobileRestrictionMessage";
 
 function Home() {
+  const isMobile = useIsMobile();
   const [hash, setHash] = useState(window.location.hash);
   useSyncUser();
   useInitializeSettings();
@@ -24,6 +27,10 @@ function Home() {
     hash.startsWith("#update-agent");
   const isTestCaseEditor =
     hash.startsWith("#make-test-case") || hash.startsWith("#edit-test-case");
+
+  if (isMobile) {
+    return <MobileRestrictionMessage />;
+  }
 
   return (
     <SidebarProvider>

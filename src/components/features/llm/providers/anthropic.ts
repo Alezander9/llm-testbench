@@ -74,8 +74,8 @@ export class AnthropicProvider implements LLMProviderInterface {
             ? completion.content[0].text
             : "", // Fallback for non-text blocks
         usage: {
-          promptTokens: completion.usage.input_tokens,
-          completionTokens: completion.usage.output_tokens,
+          inputTokens: completion.usage.input_tokens,
+          outputTokens: completion.usage.output_tokens,
           totalTokens:
             completion.usage.input_tokens + completion.usage.output_tokens,
         },

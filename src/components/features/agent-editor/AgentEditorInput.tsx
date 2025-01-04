@@ -98,13 +98,13 @@ export const AgentEditorInput = ({
             <SelectValue placeholder="Select Model" />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(AVAILABLE_MODELS).map(([modelId, displayName]) => (
+            {Object.entries(AVAILABLE_MODELS).map(([modelId, modelConfig]) => (
               <SelectItem
                 key={modelId}
                 value={modelId}
                 className="cursor-pointer"
               >
-                {displayName}
+                {modelConfig.displayName}
               </SelectItem>
             ))}
           </SelectContent>

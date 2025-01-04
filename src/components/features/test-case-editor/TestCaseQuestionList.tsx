@@ -1,7 +1,7 @@
 import { Textarea } from "../../../components/ui/textarea";
 import { Button } from "../../../components/ui/button";
 import { IconButton } from "../../../components/ui/icon-button";
-import { Trash2, GripVertical, Plus } from "lucide-react";
+import { Trash2, GripVertical, Plus, FileUp } from "lucide-react";
 import { useTestCaseEditorStore } from "../../../stores/test-case-editor";
 import {
   AlertDialog,
@@ -24,6 +24,21 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Id } from "../../../../convex/_generated/dataModel";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../../components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
+import { Label } from "../../../components/ui/label";
+import { FileInput } from "../../../components/ui/file-input";
 
 // Define props interface for SortableQuestion
 interface SortableQuestionProps {
@@ -118,8 +133,13 @@ export const TestCaseQuestionList = () => {
     removeQuestion,
     updateQuestion,
     reorderQuestions,
+    setEditorTestCase,
   } = useTestCaseEditorStore();
   const [questionToDelete, setQuestionToDelete] = useState<number | null>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [csvColumns, setCsvColumns] = useState<string[]>([]);
+  const [selectedColumn, setSelectedColumn] = useState<string>("");
+  const [csvContent, setCsvContent] = useState<string[][]>([]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -172,19 +192,76 @@ export const TestCaseQuestionList = () => {
     }
   };
 
+  const handleFileSelect = async (file: File) => {
+    const text = await file.text();
+    const rows = text
+      .split("\n")
+      .map((row) => row.split(",").map((cell) => cell.trim()));
+    const headers = rows[0];
+
+    setCsvColumns(headers);
+    setCsvContent(rows.slice(1)); // Store content without headers
+  };
+
+  const handleImport = () => {
+    if (!selectedColumn || !csvContent.length) return;
+
+    const columnIndex = csvColumns.indexOf(selectedColumn);
+    if (columnIndex === -1) return;
+
+    // Filter out empty rows and create new questions
+    const newQuestions = csvContent
+      .filter((row) => row[columnIndex]?.trim())
+      .map((row, index) => ({
+        content: row[columnIndex].trim(),
+        orderIndex: editorTestCase.questions.length + index,
+      }));
+
+    // Update the editor state with all existing and new questions
+    setEditorTestCase({
+      questions: [...editorTestCase.questions, ...newQuestions],
+    });
+
+    // Reset the import dialog state
+    setIsImportDialogOpen(false);
+    setSelectedColumn("");
+    setCsvColumns([]);
+    setCsvContent([]);
+  };
+
+  const getValidQuestionCount = () => {
+    if (!selectedColumn || !csvContent.length) return 0;
+
+    const columnIndex = csvColumns.indexOf(selectedColumn);
+    if (columnIndex === -1) return 0;
+
+    return csvContent.filter((row) => row[columnIndex]?.trim()).length;
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between h-[40px]">
         <h2 className="text-lg font-semibold">Input Messages</h2>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={addQuestion}
-          className="gap-1"
-        >
-          <Plus className="h-4 w-4" />
-          Add Input
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsImportDialogOpen(true)}
+            className="gap-1"
+          >
+            <FileUp className="h-4 w-4" />
+            Import
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={addQuestion}
+            className="gap-1"
+          >
+            <Plus className="h-4 w-4" />
+            Add Input
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="h-[calc(100%-40px)]">
@@ -243,6 +320,62 @@ export const TestCaseQuestionList = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Import Questions from CSV</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="csvFile">Choose CSV file</Label>
+              <div className="flex items-center gap-2">
+                <FileInput
+                  variant="secondary"
+                  size="sm"
+                  accept=".csv"
+                  onValueChange={(file) => {
+                    if (file) {
+                      handleFileSelect(file);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            {csvColumns.length > 0 && (
+              <div className="grid gap-2">
+                <Label>Column to import from</Label>
+                <Select
+                  value={selectedColumn}
+                  onValueChange={setSelectedColumn}
+                >
+                  <SelectTrigger variant="secondary">
+                    <SelectValue placeholder="Select a column" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {csvColumns.map((column) => (
+                      <SelectItem key={column} value={column}>
+                        {column}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <Button
+              onClick={handleImport}
+              variant={
+                selectedColumn && csvContent.length ? "primary" : "disabled"
+              }
+              className="w-full"
+            >
+              Import {getValidQuestionCount()} Questions
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

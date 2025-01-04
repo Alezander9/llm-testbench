@@ -9,16 +9,11 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 
 const getNextVersionName = (name: string): string => {
-  // Check if name already ends with a version number (v1, v2, etc.)
   const versionMatch = name.match(/v(\d+)$/);
-
   if (versionMatch) {
-    // If there's already a version number, increment it
     const currentVersion = parseInt(versionMatch[1]);
     return name.replace(/v\d+$/, `v${currentVersion + 1}`);
   }
-
-  // If no version number, append v1
   return `${name} v1`;
 };
 
@@ -79,40 +74,9 @@ export const AgentEditorLayout = () => {
     }
   }, [window.location.hash, agent, setMode, setEditorAgent]);
 
-  // Reset store when component unmounts
   useEffect(() => {
     return () => reset();
   }, [reset]);
-
-  const RightPanel = () => {
-    if (mode === "view") {
-      return (
-        <div className="flex flex-col items-center justify-center h-full">
-          <button
-            onClick={() => {
-              window.location.hash = `update-agent/${agentId}`;
-            }}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
-          >
-            Update Agent
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-col h-full ">
-        <div className="py-2 w-full">
-          <PreviewToggle />
-        </div>
-        {previewMode === "preview" ? (
-          <AgentPreview />
-        ) : (
-          <AgentEditorInput viewOnlyMode={true} />
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className="flex flex-col w-full h-full flex-1">
@@ -123,9 +87,51 @@ export const AgentEditorLayout = () => {
           <AgentEditorInput viewOnlyMode={mode === "view"} />
         </div>
         <div className="flex-1 min-w-0">
-          <RightPanel />
+          <RightPanelContent
+            mode={mode}
+            previewMode={previewMode}
+            agentId={agentId}
+          />
         </div>
       </div>
+    </div>
+  );
+};
+
+const RightPanelContent = ({
+  mode,
+  previewMode,
+  agentId,
+}: {
+  mode: string;
+  previewMode: string;
+  agentId: Id<"agents"> | null;
+}) => {
+  if (mode === "view") {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <button
+          onClick={() => {
+            window.location.hash = `update-agent/${agentId}`;
+          }}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
+        >
+          Update Agent
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full ">
+      <div className="py-2 w-full">
+        <PreviewToggle />
+      </div>
+      {previewMode === "preview" ? (
+        <AgentPreview />
+      ) : (
+        <AgentEditorInput viewOnlyMode={true} />
+      )}
     </div>
   );
 };

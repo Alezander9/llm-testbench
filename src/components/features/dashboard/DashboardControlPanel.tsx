@@ -21,6 +21,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "../../ui/context-menu";
+import { useToast } from "../../../hooks/use-toast";
 
 export const DashboardControlPanel = () => {
   const currentUser = useGetUser();
@@ -32,9 +33,11 @@ export const DashboardControlPanel = () => {
     setRunIndex,
     generatingQuestions,
     addGeneratingQuestion,
+    removeGeneratingQuestion,
     clearGeneratingQuestions,
   } = useDashboardStore();
   const { state } = useSidebar();
+  const { toast } = useToast();
   const isCollapsed = state === "collapsed";
   const selectedAgent = useQuery(api.queries.getAgent, {
     agentId: selectedAgentId ?? undefined,
@@ -50,6 +53,10 @@ export const DashboardControlPanel = () => {
     testCaseId: selectedTestCaseId ?? undefined,
     agentId: selectedAgentId ?? undefined,
     runIndex,
+  });
+
+  const userCredit = useQuery(api.queries.getUserCredit, {
+    userId: currentUser?._id,
   });
 
   const generate = useAction(api.actions.generateSingleResponse);
@@ -83,8 +90,19 @@ export const DashboardControlPanel = () => {
   };
 
   const handleGenerate = async (newRunIndex: number) => {
+    //check credit
+    if (!userCredit?.remainingCredit || userCredit.remainingCredit <= 0) {
+      toast({
+        title: "Error Generating Responses",
+        description: "You do not have enough credits to generate responses.",
+        variant: "destructive",
+      });
+      return;
+    }
     // Set the run index immediately so we can see the responses as they come in
     setRunIndex(newRunIndex);
+
+    clearGeneratingQuestions();
 
     if (
       !currentUser?._id ||
@@ -114,10 +132,10 @@ export const DashboardControlPanel = () => {
           `Failed to generate response for question ${question._id}:`,
           error
         );
+      } finally {
+        removeGeneratingQuestion(question._id);
       }
     });
-
-    clearGeneratingQuestions();
   };
 
   const handleTestCaseSelect = (testCaseId: Id<"testCases">) => {
@@ -192,9 +210,9 @@ export const DashboardControlPanel = () => {
         URL.revokeObjectURL(url);
         break;
 
-      case "save-test-case":
-        console.log("Save as test case");
-        break;
+      // case "save-test-case":
+      //   console.log("Save as test case");
+      //   break;
     }
   };
 
@@ -237,7 +255,7 @@ export const DashboardControlPanel = () => {
                 {
                   AVAILABLE_MODELS[
                     selectedAgent.model as keyof typeof AVAILABLE_MODELS
-                  ]
+                  ].displayName
                 }
                 )
               </span>
@@ -331,11 +349,11 @@ export const DashboardControlPanel = () => {
             <ContextMenuItem onSelect={() => handleSaveAction("download-csv")}>
               Download as CSV
             </ContextMenuItem>
-            <ContextMenuItem
+            {/* <ContextMenuItem
               onSelect={() => handleSaveAction("save-test-case")}
             >
               Save as test case
-            </ContextMenuItem>
+            </ContextMenuItem> */}
           </ContextMenuContent>
         </ContextMenu>
       )}

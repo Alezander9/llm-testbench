@@ -8,8 +8,6 @@ import { useGetUser } from "../../../hooks/useGetUser";
 import { nanoid } from "nanoid";
 import { IconButton } from "../../ui/icon-button";
 import { Send } from "lucide-react";
-import { Button } from "../../ui/button";
-import { RefreshCw } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
 
 export const AgentPreview = () => {
@@ -26,11 +24,7 @@ export const AgentPreview = () => {
   const generatePreview = useAction(api.actions.generatePreviewResponse);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
-
-  // Check if the preview needs to be refreshed
-  const needsRefresh =
-    previewAgent.prompt !== editorAgent.prompt ||
-    previewAgent.model !== editorAgent.model;
+  const [showChangesApplied, setShowChangesApplied] = useState(false);
 
   const sendMessage = async (content: string) => {
     if (
@@ -61,6 +55,10 @@ export const AgentPreview = () => {
         questionContent: content,
         agentPrompt: previewAgent.prompt,
         agentModel: previewAgent.model,
+        chatHistory: chatHistory.map(({ role, content }) => ({
+          role,
+          content,
+        })),
       });
 
       // Add assistant response
@@ -69,6 +67,8 @@ export const AgentPreview = () => {
         content: response.content,
         id: nanoid(),
       });
+
+      setIsTyping(false);
     } catch (error) {
       toast({
         title: "Error",
@@ -80,8 +80,6 @@ export const AgentPreview = () => {
         content: "Sorry, there was an error generating a response.",
         id: nanoid(),
       });
-    } finally {
-      setIsTyping(false);
     }
   };
 
@@ -136,37 +134,54 @@ export const AgentPreview = () => {
     }
   };
 
-  // Add this effect to handle focusing
+  // Effect to handle auto-sync when textarea is focused
   useEffect(() => {
-    if (!isTyping && textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }, [isTyping]);
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const handleFocus = () => {
+      const hasUnappliedChanges =
+        previewAgent.prompt !== editorAgent.prompt ||
+        previewAgent.model !== editorAgent.model;
+
+      if (hasUnappliedChanges) {
+        console.log(
+          "Textarea focused with unapplied changes - updating preview agent"
+        );
+        updatePreviewAgent();
+        setShowChangesApplied(true);
+
+        // Hide the message after 3 seconds
+        setTimeout(() => {
+          setShowChangesApplied(false);
+        }, 1500);
+      }
+    };
+
+    textarea.addEventListener("focus", handleFocus);
+    return () => textarea.removeEventListener("focus", handleFocus);
+  }, [previewAgent, editorAgent, updatePreviewAgent]);
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full gap-4 p-4">
-      <div className="flex-1 relative">
-        {needsRefresh && (
-          <>
-            <div className="absolute left-3 bottom-8 z-10 text-xs text-foreground">
-              Changes made
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={updatePreviewAgent}
-              className="absolute left-0 bottom-0 z-10"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-          </>
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col h-[calc(100vh-56.8px-68px)] gap-4 p-4"
+    >
+      <div className="flex-1 relative overflow-hidden">
+        {showChangesApplied && (
+          <div
+            className="absolute top-0 left-0 right-0 z-10 text-primary-foreground text-md py-2 text-center animate-in fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-right-full"
+            data-state={showChangesApplied ? "open" : "closed"}
+          >
+            Changes applied
+          </div>
         )}
         <ChatWindow
           messages={chatHistory}
           isTyping={isTyping}
           fontSizeOverride="medium"
           heightOverride="full"
+          className="h-full"
         />
       </div>
       <div className="flex gap-2 items-center">

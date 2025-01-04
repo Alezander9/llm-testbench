@@ -34,6 +34,36 @@ export default defineSchema({
     chatWindowHeight: v.optional(v.number()),
   }).index("by_userId", ["userId"]),
 
+  userFeedback: defineTable({
+    userId: v.id("users"),
+    feedback: v.string(),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
+  userCredit: defineTable({
+    userId: v.id("users"),
+    remainingCredit: v.number(),
+    totalCreditsReceived: v.number(),
+    totalCreditsPurchased: v.number(),
+    totalCreditsUsed: v.number(),
+    lastUsageTimestamp: v.number(),
+    lastRefreshTimestamp: v.number(),
+    demoCreditsUsed: v.boolean(),
+    samplePackageUsed: v.boolean(),
+  }).index("by_userId", ["userId"]),
+
+  creditTransactions: defineTable({
+    userId: v.id("users"),
+    modelName: v.string(),
+    tokensUsed: v.number(),
+    cost: v.number(),
+    processed: v.boolean(),
+    timestamp: v.number(),
+    error: v.optional(v.string()),
+  })
+    .index("by_processed", ["processed"])
+    .index("by_userId_timestamp", ["userId", "timestamp"]),
+
   apiKeys: defineTable({
     userId: v.id("users"),
     provider: v.union(
@@ -115,4 +145,10 @@ export default defineSchema({
     .index("by_agentId", ["agentId"])
     .index("by_testCaseId", ["testCaseId"])
     .index("by_testQuestionId", ["testQuestionId"]),
+
+  errorLogs: defineTable({
+    errorMessage: v.string(),
+    timestamp: v.number(),
+    userId: v.optional(v.id("users")),
+  }).index("by_timestamp", ["timestamp"]),
 });

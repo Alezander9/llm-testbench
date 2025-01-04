@@ -14,6 +14,10 @@ export interface ModelConfig {
   temperature?: number;
 }
 
+export interface ModelConfigWithKeyInfo extends ModelConfig {
+  isUsingCredits: boolean;
+}
+
 export interface Message {
   role: "system" | "user" | "assistant";
   content: string;
@@ -22,14 +26,19 @@ export interface Message {
 export interface LLMResponse {
   content: string;
   usage?: {
-    promptTokens: number;
-    completionTokens: number;
+    inputTokens: number;
+    outputTokens: number;
     totalTokens: number;
   };
 }
 
 export type StreamingLLMResponse = {
   stream: AsyncIterable<string>;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
 };
 
 // Provider-specific configurations

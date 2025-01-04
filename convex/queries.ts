@@ -363,3 +363,35 @@ export const getUserApiKeys = internalQuery({
     }));
   },
 });
+
+export const getUserCreditInternal = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("userCredit")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+  },
+});
+
+export const getUserCredit = query({
+  args: { userId: v.optional(v.id("users")) },
+  handler: async (ctx, args) => {
+    if (!args.userId) {
+      return null;
+    }
+    return await ctx.db
+      .query("userCredit")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId as Id<"users">))
+      .first();
+  },
+});
+
+export const getUnprocessedTransactions = internalQuery({
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_processed", (q) => q.eq("processed", false))
+      .collect();
+  },
+});

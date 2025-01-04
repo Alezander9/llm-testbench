@@ -4,13 +4,14 @@ import { internal } from "./_generated/api";
 import { LLMFactory } from "../src/components/features/llm/factory";
 // import { FileProcessingService } from "../src/components/features/llm/services/fileProcessing";
 import {
-  ModelConfig,
   // FileProcessingError,
   LLMProvider,
   LLMResponse,
-  StreamingLLMResponse,
+  // StreamingLLMResponse,
+  ModelConfigWithKeyInfo,
 } from "../src/components/features/llm/types";
 import { Id } from "./_generated/dataModel";
+import { calculateCost } from "../src/components/features/llm/available-models";
 
 // Define the shape of our arguments as plain objects
 type CompletionArgs = {
@@ -58,7 +59,7 @@ async function setupModelConfig(
   useDefault: boolean = false,
   maxTokens: number = 1000,
   temperature: number = 1.0
-): Promise<ModelConfig> {
+): Promise<ModelConfigWithKeyInfo> {
   // Determine provider from model name
   let provider: LLMProvider = "openai";
   if (modelName.includes("deepseek")) {
@@ -82,6 +83,8 @@ async function setupModelConfig(
 
   // Initialize with default config
   LLMFactory.initialize(defaultConfigs);
+
+  let isUsingCredits = true;
 
   // If user provided and not requesting default
   if (userId && !useDefault) {
@@ -107,6 +110,9 @@ async function setupModelConfig(
           ...defaultConfigs[provider],
           apiKey: decryptedKey,
         });
+
+        // User is using their own key, so they are not using credits
+        isUsingCredits = false;
       }
     } catch (error) {
       console.warn(`Failed to get user API key for ${provider}, using default`);
@@ -118,6 +124,7 @@ async function setupModelConfig(
     modelId: modelName,
     maxTokens: maxTokens,
     temperature: temperature,
+    isUsingCredits: isUsingCredits,
   };
 }
 
@@ -360,6 +367,40 @@ export const getDecryptedApiKey = internalAction({
   },
 });
 
+// Get last 4 digits of API key (safe to expose to client)
+export const getApiKeyLastDigits = action({
+  args: {
+    userId: v.id("users"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("deepseek")
+    ),
+  },
+  handler: async (ctx, args): Promise<string | null> => {
+    // Get encrypted key
+    const apiKey = await ctx.runQuery(internal.queries.getApiKey, {
+      userId: args.userId,
+      provider: args.provider,
+    });
+
+    if (!apiKey || !apiKey.isValid) {
+      return null;
+    }
+
+    // Decrypt the key
+    const decryptedKey = await ctx.runAction(
+      internal.nodeActions.decryptApiKey,
+      {
+        encryptedKey: apiKey.encryptedKey,
+      }
+    );
+
+    // Return only the last 4 characters
+    return decryptedKey.slice(-4);
+  },
+});
+
 // Chat Completion Actions
 export const internalGenerateCompletion = internalAction({
   args: {
@@ -381,7 +422,8 @@ export const internalGenerateCompletion = internalAction({
   },
   handler: async (ctx, args: CompletionArgs) => {
     try {
-      const modelConfig = await setupModelConfig(
+      // Setup model config
+      const modelConfigWithKeyInfo = await setupModelConfig(
         ctx,
         args.userId,
         args.modelName,
@@ -390,10 +432,58 @@ export const internalGenerateCompletion = internalAction({
         args.temperature
       );
 
+      // If using credits, check if user has enough credits
+      if (modelConfigWithKeyInfo.isUsingCredits) {
+        const userCredit = await ctx.runQuery(
+          internal.queries.getUserCreditInternal,
+          {
+            userId: args.userId,
+          }
+        );
+        if (userCredit === null || userCredit.remainingCredit <= 0) {
+          throw new Error("Insufficient credits");
+        }
+      }
+
+      // Generate completion
       const response = await LLMFactory.generateCompletion(
         args.messages,
-        modelConfig
+        modelConfigWithKeyInfo
       );
+
+      // If using credits, submit a transaction to update user credit
+      if (modelConfigWithKeyInfo.isUsingCredits) {
+        if (!response.usage?.inputTokens || !response.usage?.outputTokens) {
+          // Log the error for monitoring
+          console.error(`Missing usage data for ${args.modelName} completion`);
+          await ctx.runMutation(internal.mutations.createErrorLog, {
+            errorMessage: `Missing usage data for ${args.modelName} completion`,
+            timestamp: Date.now(),
+            userId: args.userId,
+          });
+          throw new Error("Unable to track token usage. Please try again.");
+        }
+        console.log(
+          `calculating cost with:  model: ${args.modelName} input tokens: ${response.usage.inputTokens} output tokens: ${response.usage.outputTokens}`
+        );
+        const cost = calculateCost(args.modelName, {
+          promptTokens: response.usage.inputTokens,
+          completionTokens: response.usage.outputTokens,
+        });
+        console.log(`cost: ${cost}`);
+        if (cost === null) {
+          throw new Error("Unable to calculate cost for this model.");
+        }
+
+        await ctx.runMutation(internal.mutations.createCreditTransaction, {
+          userId: args.userId,
+          modelName: modelConfigWithKeyInfo.modelId,
+          tokensUsed: response.usage.totalTokens,
+          cost,
+          timestamp: Date.now(),
+        });
+      }
+
       return response;
     } catch (error) {
       console.error("Error generating completion:", error);
@@ -550,74 +640,73 @@ export const generateCompletion = action({
 // });
 
 // Streaming Chat Completion Actions
-export const internalGenerateStreamingCompletion = internalAction({
-  args: {
-    messages: v.array(
-      v.object({
-        role: v.union(
-          v.literal("system"),
-          v.literal("user"),
-          v.literal("assistant")
-        ),
-        content: v.string(),
-      })
-    ),
-    modelName: v.string(),
-    userId: v.id("users"),
-    useDefault: v.boolean(),
-    maxTokens: v.optional(v.number()),
-    temperature: v.optional(v.number()),
-  },
-  handler: async (ctx, args: CompletionArgs): Promise<StreamingLLMResponse> => {
-    try {
-      const modelConfig = await setupModelConfig(
-        ctx,
-        args.userId,
-        args.modelName,
-        args.useDefault,
-        args.maxTokens,
-        args.temperature
-      );
+// export const internalGenerateStreamingCompletion = internalAction({
+//   args: {
+//     messages: v.array(
+//       v.object({
+//         role: v.union(
+//           v.literal("system"),
+//           v.literal("user"),
+//           v.literal("assistant")
+//         ),
+//         content: v.string(),
+//       })
+//     ),
+//     modelName: v.string(),
+//     userId: v.id("users"),
+//     useDefault: v.boolean(),
+//     maxTokens: v.optional(v.number()),
+//     temperature: v.optional(v.number()),
+//   },
+//   handler: async (ctx, args: CompletionArgs): Promise<StreamingLLMResponse> => {
+//     try {
+//       const modelConfig = await setupModelConfig(
+//         ctx,
+//         args.userId,
+//         args.modelName,
+//         args.useDefault,
+//         args.maxTokens,
+//         args.temperature
+//       );
 
-      const stream = await LLMFactory.generateStream(
-        args.messages,
-        modelConfig
-      );
-      return stream;
-    } catch (error) {
-      console.error("Error generating streaming completion:", error);
-      throw error;
-    }
-  },
-});
+//       const stream = await LLMFactory.generateStream(
+//         args.messages,
+//         modelConfig
+//       );
+//       return stream;
+//     } catch (error) {
+//       console.error("Error generating streaming completion:", error);
+//       throw error;
+//     }
+//   },
+// });
 
-export const generateStreamingCompletion = action({
-  args: {
-    messages: v.array(
-      v.object({
-        role: v.union(
-          v.literal("system"),
-          v.literal("user"),
-          v.literal("assistant")
-        ),
-        content: v.string(),
-      })
-    ),
-    modelName: v.string(),
-    userId: v.id("users"),
-    useDefault: v.boolean(),
-    maxTokens: v.optional(v.number()),
-    temperature: v.optional(v.number()),
-  },
-  handler: async (ctx, args: CompletionArgs): Promise<StreamingLLMResponse> => {
-    return await ctx.runAction(
-      internal.actions.internalGenerateStreamingCompletion,
-      args
-    );
-  },
-});
+// export const generateStreamingCompletion = action({
+//   args: {
+//     messages: v.array(
+//       v.object({
+//         role: v.union(
+//           v.literal("system"),
+//           v.literal("user"),
+//           v.literal("assistant")
+//         ),
+//         content: v.string(),
+//       })
+//     ),
+//     modelName: v.string(),
+//     userId: v.id("users"),
+//     useDefault: v.boolean(),
+//     maxTokens: v.optional(v.number()),
+//     temperature: v.optional(v.number()),
+//   },
+//   handler: async (ctx, args: CompletionArgs): Promise<StreamingLLMResponse> => {
+//     return await ctx.runAction(
+//       internal.actions.internalGenerateStreamingCompletion,
+//       args
+//     );
+//   },
+// });
 
-// Make the original action internal
 export const internalGenerateSingleResponse = internalAction({
   args: {
     userId: v.id("users"),
@@ -651,7 +740,7 @@ export const internalGenerateSingleResponse = internalAction({
           messages,
           modelName: args.agentModel,
           userId: args.userId,
-          useDefault: false, // This means we will use the user API key if it exists
+          useDefault: false,
           maxTokens: 1000,
           temperature: 1.0,
         }
@@ -701,6 +790,12 @@ export const generatePreviewResponse = action({
     questionContent: v.string(),
     agentPrompt: v.string(),
     agentModel: v.string(),
+    chatHistory: v.array(
+      v.object({
+        role: v.union(v.literal("user"), v.literal("assistant")),
+        content: v.string(),
+      })
+    ),
   },
   handler: async (ctx, args): Promise<LLMResponse> => {
     const messages: {
@@ -711,6 +806,9 @@ export const generatePreviewResponse = action({
         role: "system",
         content: args.agentPrompt,
       },
+      // Include all previous chat history
+      ...args.chatHistory,
+      // Add the new question
       {
         role: "user",
         content: args.questionContent,

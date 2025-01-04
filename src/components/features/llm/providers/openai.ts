@@ -57,8 +57,8 @@ export class OpenAIProvider implements LLMProviderInterface {
         content: completion.choices[0].message.content || "",
         usage: completion.usage
           ? {
-              promptTokens: completion.usage.prompt_tokens,
-              completionTokens: completion.usage.completion_tokens,
+              inputTokens: completion.usage.prompt_tokens,
+              outputTokens: completion.usage.completion_tokens,
               totalTokens: completion.usage.total_tokens,
             }
           : undefined,

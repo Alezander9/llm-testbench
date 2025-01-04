@@ -53,6 +53,19 @@ export const createUser = mutation({
       recentTestCaseIds: [],
     });
 
+    // create user credit
+    await ctx.db.insert("userCredit", {
+      userId: userId,
+      remainingCredit: 100, // 100 credits = 10 cents = 0.1 USD
+      totalCreditsReceived: 0,
+      totalCreditsPurchased: 0,
+      totalCreditsUsed: 0,
+      lastUsageTimestamp: 0,
+      lastRefreshTimestamp: 0,
+      demoCreditsUsed: false,
+      samplePackageUsed: false,
+    });
+
     // initialize user agent folder with archive folder
     await ctx.db.insert("agentFolders", {
       userId: userId,
@@ -61,6 +74,20 @@ export const createUser = mutation({
     });
 
     return userId;
+  },
+});
+
+export const createUserFeedback = mutation({
+  args: {
+    userId: v.id("users"),
+    feedback: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("userFeedback", {
+      userId: args.userId,
+      feedback: args.feedback,
+      createdAt: Date.now(),
+    });
   },
 });
 
@@ -727,5 +754,128 @@ export const logApiKeyAction = internalMutation({
       success: args.success,
       errorMessage: args.errorMessage,
     });
+  },
+});
+
+export const createCreditTransaction = internalMutation({
+  args: {
+    userId: v.id("users"),
+    modelName: v.string(),
+    tokensUsed: v.number(),
+    cost: v.number(),
+    timestamp: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("creditTransactions", {
+      userId: args.userId,
+      modelName: args.modelName,
+      tokensUsed: args.tokensUsed,
+      cost: args.cost,
+      timestamp: args.timestamp,
+      processed: false,
+    });
+  },
+});
+
+export const createErrorLog = internalMutation({
+  args: {
+    errorMessage: v.string(),
+    timestamp: v.number(),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("errorLogs", {
+      errorMessage: args.errorMessage,
+      timestamp: args.timestamp,
+      userId: args.userId,
+    });
+  },
+});
+
+export const markTransactionProcessed = internalMutation({
+  args: {
+    transactionId: v.id("creditTransactions"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.transactionId, {
+      processed: true,
+    });
+  },
+});
+
+export const processTransactions = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const unprocessedTransactions = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_processed", (q) => q.eq("processed", false))
+      .collect();
+
+    for (const transaction of unprocessedTransactions) {
+      try {
+        const userCredit = await ctx.db
+          .query("userCredit")
+          .withIndex("by_userId", (q) => q.eq("userId", transaction.userId))
+          .first();
+
+        if (!userCredit) {
+          await ctx.db.patch(transaction._id, {
+            processed: true,
+            error: "User credit record not found",
+          });
+          throw new Error("User credit record not found");
+        }
+
+        await ctx.db.patch(userCredit._id, {
+          remainingCredit: userCredit.remainingCredit - transaction.cost,
+          totalCreditsUsed: userCredit.totalCreditsUsed + transaction.cost,
+          lastUsageTimestamp: Date.now(),
+        });
+
+        await ctx.db.patch(transaction._id, {
+          processed: true,
+        });
+      } catch (error) {
+        await ctx.db.patch(transaction._id, {
+          processed: true,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+        console.error(
+          `Error processing transaction ${transaction._id}: ${error}`
+        );
+      }
+    }
+  },
+});
+
+export const claimDemoCredits = mutation({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Get user's credit record
+    const userCredit = await ctx.db
+      .query("userCredit")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (!userCredit) {
+      throw new Error("User credit record not found");
+    }
+
+    // Check if demo credits were already claimed
+    if (userCredit.demoCreditsUsed) {
+      throw new Error("Demo credits have already been claimed");
+    }
+
+    // Update user credit record
+    await ctx.db.patch(userCredit._id, {
+      remainingCredit: userCredit.remainingCredit + 1000,
+      totalCreditsReceived: userCredit.totalCreditsReceived + 1000,
+      demoCreditsUsed: true,
+      lastRefreshTimestamp: Date.now(),
+    });
+
+    return true;
   },
 });

@@ -462,6 +462,7 @@ export const AgentList = () => {
   const { selectedAgentId, setSelectedAgentId } = useDashboardStore();
   const [expanded, setExpanded] = useState(new Set<string>([]));
   const [draggingId, setDraggingId] = useState<UniqueIdentifier | null>(null);
+  const createNewFolder = useMutation(api.mutations.createFolder);
   const moveAgent = useMutation(api.mutations.moveAgent);
   const moveFolder = useMutation(api.mutations.moveFolder);
   const updateFolderExpanded = useMutation(
@@ -587,6 +588,23 @@ export const AgentList = () => {
     ));
   };
 
+  const handleEmptyAreaAction = (action: string) => {
+    switch (action) {
+      case "new-agent":
+        window.location.hash = "make-agent";
+        break;
+      case "new-folder":
+        if (currentUser) {
+          createNewFolder({
+            userId: currentUser._id,
+            name: "New Folder",
+            parentFolderId: undefined, // Creates at root level
+          });
+        }
+        break;
+    }
+  };
+
   return (
     <DndContext
       sensors={sensors}
@@ -599,7 +617,26 @@ export const AgentList = () => {
         </div>
         <ScrollArea className="flex-1">
           <div className="space-y-1">{renderTree(agentTree)}</div>
+
+          <ContextMenu>
+            <ContextMenuTrigger>
+              <div className="h-24 w-full" /> {/* Clickable empty area */}
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <ContextMenuItem
+                onSelect={() => handleEmptyAreaAction("new-agent")}
+              >
+                New Agent
+              </ContextMenuItem>
+              <ContextMenuItem
+                onSelect={() => handleEmptyAreaAction("new-folder")}
+              >
+                New Folder
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
         </ScrollArea>
+
         <DragOverlay>
           {draggingId ? (
             <div className="bg-background shadow-lg rounded-md p-2">

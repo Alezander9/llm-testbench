@@ -5,6 +5,7 @@ import { ArrowRight, Zap, Box, TestTube, Check } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import TheoLogo from "../assets/TheoLogo1024.png";
 import TheoIcon from "../assets/TheoIcon256.png";
+import { useIsMobile } from "../hooks/use-mobile";
 
 interface BoidParams {
   separationDistance: number;
@@ -81,6 +82,7 @@ const SECTION_PARAMS: Record<string, BoidParams> = {
 };
 
 function Landing() {
+  const isMobile = useIsMobile();
   const [currentParams, setCurrentParams] = useState<BoidParams>(
     SECTION_PARAMS.hero
   );
@@ -219,6 +221,22 @@ function Landing() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!sectionsRef.current) return;
+
+      const sections = sectionsRef.current.children;
+      const playgroundSection = sections[sections.length - 1] as HTMLElement;
+      const isInPlayground =
+        window.scrollY + window.innerHeight >= playgroundSection.offsetTop;
+
+      setShowTopBar((window.scrollY < 100 || isInPlayground) && !isMobile);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isMobile]);
+
   return (
     <div className="relative min-h-screen">
       <div
@@ -229,31 +247,34 @@ function Landing() {
         <div className="h-16 bg-background/80 backdrop-blur-md border-b">
           <div className="container mx-auto h-full flex items-center justify-between px-4">
             <div className="w-20" />
-            <div className="flex items-center gap-6">
-              <Button variant="ghost" onClick={() => scrollToSection(1)}>
-                Features
-              </Button>
-              <Button variant="ghost" onClick={() => scrollToSection(2)}>
-                Why Theo
-              </Button>
-              <Button variant="ghost" onClick={() => scrollToSection(3)}>
-                Pricing
-              </Button>
-            </div>
+            {!isMobile && (
+              <div className="flex items-center gap-6">
+                <Button variant="ghost" onClick={() => scrollToSection(1)}>
+                  Features
+                </Button>
+                <Button variant="ghost" onClick={() => scrollToSection(2)}>
+                  Why Theo
+                </Button>
+                <Button variant="ghost" onClick={() => scrollToSection(3)}>
+                  Pricing
+                </Button>
+              </div>
+            )}
             <div className="flex items-center gap-4">
               <Button
                 variant="secondary"
+                size={isMobile ? "sm" : "default"}
                 onClick={() => setIsBackgroundEnabled(!isBackgroundEnabled)}
               >
                 <img
                   src={TheoIcon}
                   alt="Theo Icon"
-                  className="w-[22px] h-[22px]"
+                  className={`${isMobile ? "w-[18px] h-[18px]" : "w-[22px] h-[22px]"}`}
                 />
                 {isBackgroundEnabled ? "Disable" : "Enable"}
               </Button>
               <SignInButton>
-                <Button>Get Started</Button>
+                <Button size={isMobile ? "sm" : "default"}>Get Started</Button>
               </SignInButton>
             </div>
           </div>
@@ -263,7 +284,18 @@ function Landing() {
       <img
         src={TheoLogo}
         alt="Theo Logo"
-        className="fixed top-4 left-4 h-10 z-40 cursor-pointer"
+        className={`fixed top-4 left-4 z-40 cursor-pointer ${
+          isMobile ? "h-8" : "h-10"
+        } ${
+          isMobile
+            ? "transition-opacity duration-300 " +
+              (window.scrollY > 100 &&
+              window.scrollY + window.innerHeight <
+                document.body.scrollHeight - window.innerHeight
+                ? "opacity-0"
+                : "opacity-100")
+            : ""
+        }`}
         onClick={() => scrollToSection(0)}
       />
 
@@ -279,15 +311,19 @@ function Landing() {
         {/* Hero Section */}
         <section className="min-h-screen flex items-center justify-center">
           <div className="w-full px-4 py-32 backdrop-blur-sm bg-background/30 rounded-lg pointer-events-auto">
-            <h1 className="text-6xl font-bold text-center mb-6 cursor-default">
+            <h1
+              className={`${isMobile ? "text-4xl" : "text-6xl"} font-bold text-center mb-6 cursor-default`}
+            >
               Theo: A Prompt Engineering Studio
             </h1>
-            <p className="text-xl text-center mb-8 max-w-2xl mx-auto">
+            <p
+              className={`${isMobile ? "text-lg" : "text-xl"} text-center mb-8 max-w-2xl mx-auto`}
+            >
               Design, test, and perfect your AI agents.
             </p>
-            <div className="flex justify-center gap-4 pointer-events-auto">
+            <div className="flex justify-center gap-4">
               <SignInButton>
-                <Button size="lg">
+                <Button size={isMobile ? "default" : "lg"}>
                   Get Started <ArrowRight className="ml-2" />
                 </Button>
               </SignInButton>
@@ -301,7 +337,7 @@ function Landing() {
             <h2 className="text-4xl font-bold text-center mb-16">
               Key Features
             </h2>
-            <div className="flex flex-col gap-8 max-w-2xl mx-auto bg-background/40 backdrop-blur-md p-8 rounded-lg pointer-events-auto">
+            <div className="flex flex-col gap-8 max-w-2xl mx-auto bg-background/40 backdrop-blur-md pt-8 rounded-lg pointer-events-auto">
               <FeatureCard
                 icon={<Box />}
                 title="Organize Your Prompts"
@@ -372,9 +408,11 @@ function Landing() {
                   <PricingFeature text="Pay for tokens as you go" />
                   <PricingFeature text="No hidden fees" />
                 </ul>
-                <Button className="w-full" size="lg">
-                  Get Started
-                </Button>
+                <SignInButton>
+                  <Button className="w-full" size="lg">
+                    Get Started
+                  </Button>
+                </SignInButton>
               </div>
               <div className="p-8 rounded-lg bg-black/5 backdrop-blur-sm flex flex-col">
                 <h3 className="text-2xl font-bold mb-4">Enterprise</h3>
@@ -396,15 +434,11 @@ function Landing() {
             <h2 className="text-4xl font-bold mb-8">
               Ready to transform your AI interactions?
             </h2>
-            <Button
-              size="lg"
-              variant="primary"
-              onClick={() => {
-                console.log("clicked");
-              }}
-            >
-              Start Now <ArrowRight className="ml-2" />
-            </Button>
+            <SignInButton>
+              <Button size="lg" variant="primary">
+                Start Now <ArrowRight className="ml-2" />
+              </Button>
+            </SignInButton>
           </div>
         </section>
         {/* Playground section */}
