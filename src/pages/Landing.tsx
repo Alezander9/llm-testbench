@@ -13,80 +13,11 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import TheoLogo from "../assets/TheoLogo1024.png";
 import TheoIcon from "../assets/TheoIcon256.png";
 import { useIsMobile } from "../hooks/use-mobile";
-
-interface BoidParams {
-  separationDistance: number;
-  alignmentDistance: number;
-  cohesionDistance: number;
-  centerAttractionStrength: number;
-  predatorRepulsionStrength: number;
-  predatorRepulsionRadius: number;
-  speedLimit: number;
-  cameraZoom: number;
-}
-
-const SECTION_PARAMS: Record<string, BoidParams> = {
-  hero: {
-    separationDistance: 20.0,
-    alignmentDistance: 20.0,
-    cohesionDistance: 20.0,
-    centerAttractionStrength: 3.0,
-    predatorRepulsionStrength: 50.0,
-    predatorRepulsionRadius: 80.0,
-    speedLimit: 6.0,
-    cameraZoom: 2.0,
-  },
-  features: {
-    separationDistance: 20.0,
-    alignmentDistance: 20.0,
-    cohesionDistance: 20.0,
-    centerAttractionStrength: 3.0,
-    predatorRepulsionStrength: 50.0,
-    predatorRepulsionRadius: 80.0,
-    speedLimit: 6.0,
-    cameraZoom: 2.0,
-  },
-  why: {
-    separationDistance: 20.0,
-    alignmentDistance: 20.0,
-    cohesionDistance: 20.0,
-    centerAttractionStrength: 3.0,
-    predatorRepulsionStrength: 50.0,
-    predatorRepulsionRadius: 80.0,
-    speedLimit: 6.0,
-    cameraZoom: 2.0,
-  },
-  pricing: {
-    separationDistance: 20.0,
-    alignmentDistance: 20.0,
-    cohesionDistance: 20.0,
-    centerAttractionStrength: 3.0,
-    predatorRepulsionStrength: 50.0,
-    predatorRepulsionRadius: 80.0,
-    speedLimit: 6.0,
-    cameraZoom: 2.0,
-  },
-  cta: {
-    separationDistance: 20.0,
-    alignmentDistance: 20.0,
-    cohesionDistance: 20.0,
-    centerAttractionStrength: 3.0,
-    predatorRepulsionStrength: 50.0,
-    predatorRepulsionRadius: 80.0,
-    speedLimit: 6.0,
-    cameraZoom: 1.6,
-  },
-  playground: {
-    separationDistance: 20.0,
-    alignmentDistance: 20.0,
-    cohesionDistance: 20.0,
-    centerAttractionStrength: 4.0,
-    predatorRepulsionStrength: 70.0,
-    predatorRepulsionRadius: 50.0,
-    speedLimit: 10.0,
-    cameraZoom: 1.2,
-  },
-};
+import {
+  SECTION_PARAMS,
+  BoidParams,
+  SECTION_PARAMS_MOBILE,
+} from "./boid-parameters";
 
 function Landing() {
   const isMobile = useIsMobile();
@@ -200,7 +131,9 @@ function Landing() {
         }
       }
 
-      const sectionNames = Object.keys(SECTION_PARAMS);
+      const sectionNames = isMobile
+        ? Object.keys(SECTION_PARAMS_MOBILE)
+        : Object.keys(SECTION_PARAMS);
       const currentSection = sectionNames[currentSectionIndex];
       const nextSection =
         sectionNames[
@@ -216,8 +149,12 @@ function Landing() {
       const t = Math.max(0, Math.min(1, sectionProgress));
 
       const interpolatedParams = lerpParams(
-        SECTION_PARAMS[currentSection],
-        SECTION_PARAMS[nextSection],
+        isMobile
+          ? SECTION_PARAMS_MOBILE[currentSection]
+          : SECTION_PARAMS[currentSection],
+        isMobile
+          ? SECTION_PARAMS_MOBILE[nextSection]
+          : SECTION_PARAMS[nextSection],
         t
       );
 
@@ -316,7 +253,11 @@ function Landing() {
         style={{ scrollBehavior: "smooth" }}
       >
         {/* Hero Section */}
-        <section className="min-h-screen flex items-center justify-center">
+        <section
+          className={`min-h-screen flex items-center justify-center ${
+            isMobile ? "pointer-events-auto" : ""
+          }`}
+        >
           <div className="w-full px-4 py-32 backdrop-blur-sm bg-background/30 rounded-lg pointer-events-auto">
             <h1
               className={`${isMobile ? "text-4xl" : "text-6xl"} font-bold text-center mb-6 cursor-default`}
@@ -340,7 +281,7 @@ function Landing() {
         </section>
 
         {/* Features Section */}
-        <section className="py-24 ">
+        <section className={`py-24 ${isMobile ? "pointer-events-auto" : ""}`}>
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-16">
               Key Features
@@ -366,7 +307,7 @@ function Landing() {
         </section>
 
         {/* Why Theo Section */}
-        <section className="py-24 ">
+        <section className={`py-24 ${isMobile ? "pointer-events-auto" : ""}`}>
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-16">Why Theo?</h2>
             <div className="grid md:grid-cols-2 gap-x-12 gap-y-6 max-w-4xl mx-auto">
@@ -403,7 +344,7 @@ function Landing() {
         </section>
 
         {/* Pricing Section */}
-        <section className="py-24">
+        <section className={`py-24 ${isMobile ? "pointer-events-auto" : ""}`}>
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-16">
               Simple Pricing
@@ -446,7 +387,11 @@ function Landing() {
         </section>
 
         {/* Final CTA Section */}
-        <section className="min-h-screen flex items-center justify-center">
+        <section
+          className={`min-h-screen flex items-center justify-center ${
+            isMobile ? "pointer-events-auto" : ""
+          }`}
+        >
           <div className="text-center pointer-events-auto">
             <h2 className="text-4xl font-bold mb-8">
               Ready to transform your AI interactions?
