@@ -6,6 +6,24 @@ import {
   userSettingDefaults,
   UserSettingKey,
 } from "../src/components/features/settings/types";
+import {
+  TheoTechSupportPrompt,
+  FreysaPrompt,
+  AlfredPrompt,
+  FrankPrompt,
+  KylePrompt,
+  SassySalPrompt,
+  NameGeneratorCreativePrompt,
+  NameGeneratorNormalPrompt,
+  SentimentAnalysisPrompt,
+} from "../src/components/features/llm/examples/exampleAgents";
+import {
+  AISafetyTestCase,
+  TheoTechSupportTestCase,
+  NameGeneratorTestCase,
+  ChatMessageTestCase,
+  IDMBReviewTestCase,
+} from "../src/components/features/llm/examples/exampleTestCases";
 
 export const createUser = mutation({
   args: {
@@ -72,6 +90,139 @@ export const createUser = mutation({
       name: "Archive",
       parentFolderId: undefined,
     });
+
+    // initialize folder of example agents
+    const exampleFolder = await ctx.db.insert("agentFolders", {
+      userId: userId,
+      name: "Examples",
+      parentFolderId: undefined,
+    });
+
+    await ctx.db.insert("agents", {
+      userId: userId,
+      name: "Theo Tech Support",
+      model: "gpt-4o",
+      prompt: TheoTechSupportPrompt,
+      folderId: exampleFolder,
+    });
+
+    const AIAlignment = await ctx.db.insert("agentFolders", {
+      userId: userId,
+      name: "AI Alignment",
+      parentFolderId: exampleFolder,
+    });
+
+    await ctx.db.insert("agents", {
+      userId: userId,
+      name: "Freysa (AI Safety Challenge)",
+      model: "gpt-4o",
+      prompt: FreysaPrompt,
+      folderId: AIAlignment,
+    });
+
+    const characters = await ctx.db.insert("agentFolders", {
+      userId: userId,
+      name: "Characters",
+      parentFolderId: exampleFolder,
+    });
+
+    await ctx.db.insert("agents", {
+      userId: userId,
+      name: "AIfred",
+      model: "gpt-4o",
+      prompt: AlfredPrompt,
+      folderId: characters,
+    });
+
+    await ctx.db.insert("agents", {
+      userId: userId,
+      name: "Frank",
+      model: "claude-3-5-sonnet-latest",
+      prompt: FrankPrompt,
+      folderId: characters,
+    });
+
+    await ctx.db.insert("agents", {
+      userId: userId,
+      name: "Kyle",
+      model: "gpt-4o-mini",
+      prompt: KylePrompt,
+      folderId: characters,
+    });
+
+    await ctx.db.insert("agents", {
+      userId: userId,
+      name: "Sassy Sal",
+      model: "deepseek-chat",
+      prompt: SassySalPrompt,
+      folderId: characters,
+    });
+
+    const nameGenerators = await ctx.db.insert("agentFolders", {
+      userId: userId,
+      name: "Name Generators",
+      parentFolderId: exampleFolder,
+    });
+
+    await ctx.db.insert("agents", {
+      userId: userId,
+      name: "Name Generator (Creative)",
+      model: "gpt-4o",
+      prompt: NameGeneratorCreativePrompt,
+      folderId: nameGenerators,
+    });
+
+    await ctx.db.insert("agents", {
+      userId: userId,
+      name: "Name Generator (Normal)",
+      model: "claude-3-5-haiku-latest",
+      prompt: NameGeneratorNormalPrompt,
+      folderId: nameGenerators,
+    });
+
+    const SentimentAnalysis = await ctx.db.insert("agentFolders", {
+      userId: userId,
+      name: "Sentiment Analysis",
+      parentFolderId: exampleFolder,
+    });
+
+    await ctx.db.insert("agents", {
+      userId: userId,
+      name: "Sentiment Analysis",
+      model: "gpt-4o-mini",
+      prompt: SentimentAnalysisPrompt,
+      folderId: SentimentAnalysis,
+    });
+
+    // set up example test cases
+    const testCases = [
+      AISafetyTestCase,
+      TheoTechSupportTestCase,
+      NameGeneratorTestCase,
+      ChatMessageTestCase,
+      IDMBReviewTestCase,
+    ];
+
+    // Create test cases and their questions
+    for (const testCase of testCases) {
+      const testCaseId = await ctx.db.insert("testCases", {
+        userId: userId,
+        name: testCase.name,
+        description: testCase.description,
+      });
+
+      // Create empty questions for each test case
+      const questionPromises = testCase.questions.map((question, index) =>
+        ctx.db.insert("testQuestions", {
+          userId: userId,
+          testCaseId: testCaseId,
+          testContent: question,
+          orderIndex: index,
+        })
+      );
+
+      await Promise.all(questionPromises);
+    }
 
     return userId;
   },

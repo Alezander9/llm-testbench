@@ -229,7 +229,7 @@ export const getUserAgentTree = query({
       parentId: Id<"agentFolders"> | undefined = undefined,
       depth: number = 0
     ): TreeItemType[] {
-      // Get immediate child folders
+      // Get immediate child folders and agents
       const childFolders = folders.filter((f) => {
         if (parentId === undefined) {
           return !f.parentFolderId;
@@ -237,7 +237,6 @@ export const getUserAgentTree = query({
         return f.parentFolderId === parentId;
       });
 
-      // Get immediate child agents
       const childAgents = agents.filter((a) => {
         if (parentId === undefined) {
           return !a.folderId;
@@ -245,7 +244,7 @@ export const getUserAgentTree = query({
         return a.folderId === parentId;
       });
 
-      // Build tree items with depth
+      // Create tree items and sort them
       const items: TreeItemType[] = [
         ...childFolders.map((folder) => ({
           id: folder._id,
@@ -264,7 +263,14 @@ export const getUserAgentTree = query({
           parentFolderId: agent.folderId,
           depth: depth,
         })),
-      ];
+      ].sort((a, b) => {
+        // Special case: "Archive" folder always goes last
+        if (a.type === "folder" && a.name === "Archive") return 1;
+        if (b.type === "folder" && b.name === "Archive") return -1;
+
+        // Normal alphabetical sorting
+        return a.name.localeCompare(b.name);
+      });
 
       return items;
     }
