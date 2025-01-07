@@ -96,6 +96,7 @@ export const createUser = mutation({
       userId: userId,
       name: "Examples",
       parentFolderId: undefined,
+      expanded: true,
     });
 
     await ctx.db.insert("agents", {
