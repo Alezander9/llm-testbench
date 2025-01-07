@@ -11,6 +11,7 @@ export interface BoidParams {
 
 export const SECTION_PARAMS: Record<string, BoidParams> = {
   hero: {
+    // default values, orbit
     separationDistance: 20.0,
     alignmentDistance: 20.0,
     cohesionDistance: 20.0,
@@ -20,55 +21,60 @@ export const SECTION_PARAMS: Record<string, BoidParams> = {
     speedLimit: 6.0,
     cameraZoom: 2.0,
   },
+  // begin to ease into high cohesion, form closely packed flocks
   features: {
-    separationDistance: 20.0,
-    alignmentDistance: 20.0,
-    cohesionDistance: 20.0,
-    centerAttractionStrength: 3.0,
+    separationDistance: 10.0,
+    alignmentDistance: 25.0,
+    cohesionDistance: 40.0,
+    centerAttractionStrength: 4.0,
     predatorRepulsionStrength: 50.0,
     predatorRepulsionRadius: 80.0,
-    speedLimit: 6.0,
+    speedLimit: 8.0,
     cameraZoom: 2.0,
   },
   why: {
-    separationDistance: 20.0,
-    alignmentDistance: 20.0,
-    cohesionDistance: 20.0,
-    centerAttractionStrength: 3.0,
+    // high cohesion, form closely packed flocks
+    separationDistance: 2.0,
+    alignmentDistance: 30.0,
+    cohesionDistance: 60.0,
+    centerAttractionStrength: 5.0,
     predatorRepulsionStrength: 50.0,
     predatorRepulsionRadius: 80.0,
-    speedLimit: 6.0,
+    speedLimit: 8.0,
     cameraZoom: 2.0,
   },
   pricing: {
-    separationDistance: 20.0,
+    // high separation, avoid each other swim around aimlessly
+    separationDistance: 50.0,
     alignmentDistance: 20.0,
-    cohesionDistance: 20.0,
-    centerAttractionStrength: 3.0,
+    cohesionDistance: 10.0,
+    centerAttractionStrength: 2.0,
     predatorRepulsionStrength: 50.0,
     predatorRepulsionRadius: 80.0,
     speedLimit: 6.0,
     cameraZoom: 2.0,
   },
   cta: {
+    // back to default values, orbit, beign speeding up and zooming out
     separationDistance: 20.0,
     alignmentDistance: 20.0,
     cohesionDistance: 20.0,
     centerAttractionStrength: 3.0,
     predatorRepulsionStrength: 50.0,
     predatorRepulsionRadius: 80.0,
-    speedLimit: 6.0,
+    speedLimit: 8.0,
     cameraZoom: 1.6,
   },
+  // back to default values, orbit speed up and zoom out
   playground: {
     separationDistance: 20.0,
     alignmentDistance: 20.0,
     cohesionDistance: 20.0,
     centerAttractionStrength: 4.0,
     predatorRepulsionStrength: 70.0,
-    predatorRepulsionRadius: 50.0,
+    predatorRepulsionRadius: 60.0,
     speedLimit: 10.0,
-    cameraZoom: 1.2,
+    cameraZoom: 1.4,
   },
 };
 

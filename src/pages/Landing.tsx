@@ -14,8 +14,8 @@ import TheoLogo from "../assets/TheoLogo1024.png";
 import TheoIcon from "../assets/TheoIcon256.png";
 import { useIsMobile } from "../hooks/use-mobile";
 import {
-  SECTION_PARAMS,
   BoidParams,
+  SECTION_PARAMS,
   SECTION_PARAMS_MOBILE,
 } from "./boid-parameters";
 
@@ -121,7 +121,7 @@ function Landing() {
       if (!sectionsRef.current) return;
 
       const sections = sectionsRef.current.children;
-      const scrollPosition = window.scrollY + window.innerHeight / 2;
+      const scrollPosition = window.scrollY;
 
       let currentSectionIndex = 0;
       for (let i = 0; i < sections.length; i++) {
