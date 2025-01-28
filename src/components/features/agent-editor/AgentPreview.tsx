@@ -80,6 +80,7 @@ export const AgentPreview = () => {
         content: "Sorry, there was an error generating a response.",
         id: nanoid(),
       });
+      setIsTyping(false);
     }
   };
 
@@ -146,7 +147,7 @@ export const AgentPreview = () => {
 
       if (hasUnappliedChanges) {
         console.log(
-          "Textarea focused with unapplied changes - updating preview agent"
+          "Textarea focused with unapplied changes - updating preview agent",
         );
         updatePreviewAgent();
         setShowChangesApplied(true);

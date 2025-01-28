@@ -7,6 +7,7 @@ import { PreviewToggle } from "./PreviewToggle";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
+import { Button } from "../../ui/button";
 
 const getNextVersionName = (name: string): string => {
   const versionMatch = name.match(/v(\d+)$/);
@@ -110,14 +111,14 @@ const RightPanelContent = ({
   if (mode === "view") {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <button
+        <Button
+          variant="primary"
           onClick={() => {
             window.location.hash = `update-agent/${agentId}`;
           }}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
         >
           Update Agent
-        </button>
+        </Button>
       </div>
     );
   }

@@ -18,15 +18,23 @@ import {
   SECTION_PARAMS,
   SECTION_PARAMS_MOBILE,
 } from "./boid-parameters";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
+import TheoDemoVideo from "../assets/TheoDemoVideoCompressed.mp4";
 
 function Landing() {
   const isMobile = useIsMobile();
   const [currentParams, setCurrentParams] = useState<BoidParams>(
-    SECTION_PARAMS.hero
+    SECTION_PARAMS.hero,
   );
   const [isBackgroundEnabled, setIsBackgroundEnabled] = useState(true);
   const sectionsRef = useRef<HTMLDivElement>(null);
   const [showTopBar, setShowTopBar] = useState(false);
+  const [isVideoDialogOpen, setIsVideoDialogOpen] = useState(false);
 
   const lerp = (start: number, end: number, t: number) => {
     return start * (1 - t) + end * t;
@@ -35,38 +43,38 @@ function Landing() {
   const lerpParams = (
     params1: BoidParams,
     params2: BoidParams,
-    t: number
+    t: number,
   ): BoidParams => {
     return {
       separationDistance: lerp(
         params1.separationDistance,
         params2.separationDistance,
-        t
+        t,
       ),
       alignmentDistance: lerp(
         params1.alignmentDistance,
         params2.alignmentDistance,
-        t
+        t,
       ),
       cohesionDistance: lerp(
         params1.cohesionDistance,
         params2.cohesionDistance,
-        t
+        t,
       ),
       centerAttractionStrength: lerp(
         params1.centerAttractionStrength,
         params2.centerAttractionStrength,
-        t
+        t,
       ),
       predatorRepulsionStrength: lerp(
         params1.predatorRepulsionStrength,
         params2.predatorRepulsionStrength,
-        t
+        t,
       ),
       predatorRepulsionRadius: lerp(
         params1.predatorRepulsionRadius,
         params2.predatorRepulsionRadius,
-        t
+        t,
       ),
       speedLimit: lerp(params1.speedLimit, params2.speedLimit, t),
       cameraZoom: lerp(params1.cameraZoom, params2.cameraZoom, t),
@@ -93,7 +101,7 @@ function Landing() {
         window.scrollY + window.innerHeight >= playgroundSection.offsetTop;
 
       setShowTopBar(
-        (e.clientY < 100 || window.scrollY < 100) && !isInPlayground
+        (e.clientY < 100 || window.scrollY < 100) && !isInPlayground,
       );
     };
 
@@ -155,7 +163,7 @@ function Landing() {
         isMobile
           ? SECTION_PARAMS_MOBILE[nextSection]
           : SECTION_PARAMS[nextSection],
-        t
+        t,
       );
 
       setCurrentParams(interpolatedParams);
@@ -202,6 +210,12 @@ function Landing() {
                 <Button variant="ghost" onClick={() => scrollToSection(3)}>
                   Pricing
                 </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsVideoDialogOpen(true)}
+                >
+                  Watch Demo
+                </Button>
               </div>
             )}
             <div className="flex items-center gap-4">
@@ -224,6 +238,21 @@ function Landing() {
           </div>
         </div>
       </div>
+
+      {/* Video Dialog */}
+      <Dialog open={isVideoDialogOpen} onOpenChange={setIsVideoDialogOpen}>
+        <DialogContent className="w-[80%] max-w-none">
+          <DialogHeader>
+            <DialogTitle>Demo Video</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center">
+            <video className="w-full h-auto max-h-[80vh]" controls>
+              <source src={TheoDemoVideo} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <img
         src={TheoLogo}
@@ -294,8 +323,8 @@ function Landing() {
               />
               <FeatureCard
                 icon={<Zap />}
-                title="Aggregate Model Inputs"
-                description="Test across multiple inputs simultaneously. Compare responses and find the perfect fit for your use case."
+                title="Parallelize API Calls"
+                description="Upload files of inputs and get responses simultaneously. Compare responses and find the perfect prompt and model for your use case."
               />
               <FeatureCard
                 icon={<TestTube />}
@@ -331,7 +360,7 @@ function Landing() {
                   description="Break down complex multi-agent flows and test variations on each component."
                 />
                 <WhyCard
-                  title="Prompt Security"
+                  title="Agent Security"
                   description="Test prompt injection methods and ensure your systems are robust against manipulation."
                 />
                 <WhyCard
@@ -421,7 +450,7 @@ function FeatureCard({
 }) {
   return (
     <div className="p-6 rounded-lg bg-background/60 backdrop-blur-sm flex items-center gap-4">
-      <div className="w-12 h-12 text-primary flex-shrink-0">{icon}</div>
+      <div className="w-14 h-14 text-foreground flex-shrink-0">{icon}</div>
       <div>
         <h3 className="text-xl font-bold mb-2">{title}</h3>
         <p className="text-gray-700">{description}</p>
@@ -448,7 +477,7 @@ function WhyCard({
 function PricingFeature({ text }: { text: string }) {
   return (
     <div className="flex items-center gap-2">
-      <Check className="w-5 h-5 text-primary" />
+      <Check className="w-5 h-5 text-foreground flex-shrink-0" />
       <span>{text}</span>
     </div>
   );
@@ -457,7 +486,7 @@ function PricingFeature({ text }: { text: string }) {
 function PricingQuestion({ text }: { text: string }) {
   return (
     <div className="flex items-center gap-2">
-      <CircleHelp className="w-5 h-5 text-foreground" />
+      <CircleHelp className="w-5 h-5 text-foreground flex-shrink-0" />
       <span>{text}</span>
     </div>
   );

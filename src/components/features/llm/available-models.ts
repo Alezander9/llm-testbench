@@ -18,14 +18,31 @@ export const AVAILABLE_MODELS = {
     inputCost: convertToCreditsPerToken(0.15), // $0.150 per 1M input tokens
     outputCost: convertToCreditsPerToken(0.6), // $0.600 per 1M output tokens
   },
+  // o1 model does not allow access at my usage tier yet
+  // "o1": {
+  //   displayName: "GPT o1",
+  //   inputCost: convertToCreditsPerToken(15), // $15.00 per 1M input tokens
+  //   outputCost: convertToCreditsPerToken(60), // $60.00 per 1M output tokens
+  // },
+  // o1-mini model does not allow system prompts so will break
+  // "o1-mini": {
+  //   displayName: "GPT o1 Mini",
+  //   inputCost: convertToCreditsPerToken(3), // $0.075 per 1M input tokens
+  //   outputCost: convertToCreditsPerToken(12), // $0.300 per 1M output tokens
+  // },
   "deepseek-chat": {
-    displayName: "DeepSeek",
+    displayName: "DeepSeek Chat V3",
     // non-discounted prices:
     // inputCost: convertToCreditsPerToken(0.27),  // $0.27 per 1M input tokens (cache miss)
     // outputCost: convertToCreditsPerToken(1.10), // $1.10 per 1M output tokens
     // discounted prices (effective until 2025-02-08):
     inputCost: convertToCreditsPerToken(0.27), // $0.27 per 1M input tokens (cache miss)
     outputCost: convertToCreditsPerToken(1.1), // $1.10 per 1M output tokens
+  },
+  "deepseek-reason": {
+    displayName: "DeepSeek R1",
+    inputCost: convertToCreditsPerToken(0.55), // $0.55 per 1M input tokens (cache miss)
+    outputCost: convertToCreditsPerToken(2.19), // $2.19 per 1M output tokens
   },
   "claude-3-5-sonnet-latest": {
     displayName: "Claude 3.5 Sonnet",
@@ -52,7 +69,7 @@ function convertToCreditsPerToken(dollarsPer1M: number): number {
 // Helper function for cost calculation
 export function calculateCost(
   modelName: string,
-  usage?: { promptTokens: number; completionTokens: number }
+  usage?: { promptTokens: number; completionTokens: number },
 ) {
   if (!usage) return null;
   const modelConfig =
@@ -62,11 +79,11 @@ export function calculateCost(
   // Costs are in credits per token, result will be in credits
   const promptCost = usage.promptTokens * modelConfig.inputCost;
   console.log(
-    `promptCost: ${promptCost} at ${modelConfig.inputCost} credits per token`
+    `promptCost: ${promptCost} at ${modelConfig.inputCost} credits per token`,
   );
   const completionCost = usage.completionTokens * modelConfig.outputCost;
   console.log(
-    `completionCost: ${completionCost} at ${modelConfig.outputCost} credits per token`
+    `completionCost: ${completionCost} at ${modelConfig.outputCost} credits per token`,
   );
 
   return promptCost + completionCost;

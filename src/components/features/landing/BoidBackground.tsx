@@ -10,7 +10,7 @@ import {
 import TheoIcon from "../../../assets/TheoIcon256.png";
 
 const WIDTH = 16; //originally 32
-const BIRDS = WIDTH * WIDTH;
+const BOIDS = WIDTH * WIDTH;
 const BOUNDS = 800;
 const BOUNDS_HALF = BOUNDS / 2;
 
@@ -30,17 +30,17 @@ class BoidGeometry extends THREE.BufferGeometry {
     super();
 
     const trianglesPerBoid = 2;
-    const triangles = BIRDS * trianglesPerBoid;
+    const triangles = BOIDS * trianglesPerBoid;
     const points = triangles * 3;
 
     const vertices = new THREE.BufferAttribute(new Float32Array(points * 3), 3);
     const boidColors = new THREE.BufferAttribute(
       new Float32Array(points * 3),
-      3
+      3,
     );
     const references = new THREE.BufferAttribute(
       new Float32Array(points * 2),
-      2
+      2,
     );
     const boidVertex = new THREE.BufferAttribute(new Float32Array(points), 1);
 
@@ -57,7 +57,7 @@ class BoidGeometry extends THREE.BufferGeometry {
       }
     }
 
-    for (let f = 0; f < BIRDS; f++) {
+    for (let f = 0; f < BOIDS; f++) {
       // Triangle 1 of quad
       verts_push(
         -0.5,
@@ -68,7 +68,7 @@ class BoidGeometry extends THREE.BufferGeometry {
         0, // bottom right
         0.5,
         0.5,
-        0
+        0,
       ); // top right
 
       // Triangle 2 of quad
@@ -81,7 +81,7 @@ class BoidGeometry extends THREE.BufferGeometry {
         0, // top right
         -0.5,
         0.5,
-        0
+        0,
       ); // top left
     }
 
@@ -91,7 +91,7 @@ class BoidGeometry extends THREE.BufferGeometry {
       const x = (boidIndex % WIDTH) / WIDTH;
       const y = ~~(boidIndex / WIDTH) / WIDTH;
 
-      const c = new THREE.Color(0x666666 + (~~(v / 9) / BIRDS) * 0x666666);
+      const c = new THREE.Color(0x666666 + (~~(v / 9) / BOIDS) * 0x666666);
 
       boidColors.array[v * 3 + 0] = c.r;
       boidColors.array[v * 3 + 1] = c.g;
@@ -163,12 +163,12 @@ export default function BoidBackground({
       velocityVariable = gpuCompute.addVariable(
         "textureVelocity",
         fragmentShaderVelocity,
-        dtVelocity
+        dtVelocity,
       );
       positionVariable = gpuCompute.addVariable(
         "texturePosition",
         fragmentShaderPosition,
-        dtPosition
+        dtPosition,
       );
 
       gpuCompute.setVariableDependencies(velocityVariable, [
@@ -263,7 +263,7 @@ export default function BoidBackground({
       if (!velocityUniforms) return;
       velocityUniforms["windowBounds"].value.set(
         window.innerWidth,
-        window.innerHeight
+        window.innerHeight,
       );
     }
 
@@ -275,7 +275,7 @@ export default function BoidBackground({
         windowHalfY, // top
         -windowHalfY, // bottom
         1, // near
-        1000 // far
+        1000, // far
       );
       cameraRef.current = camera;
       camera.position.z = 350; // Keep this the same
@@ -402,7 +402,7 @@ export default function BoidBackground({
       velocityUniforms["predator"].value.set(
         (0.5 * mouseX) / windowHalfX,
         (-0.5 * mouseY) / windowHalfY,
-        0
+        0,
       );
 
       // Move predator position far away until position updates again
