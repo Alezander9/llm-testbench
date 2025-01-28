@@ -89,7 +89,7 @@ export const fragmentShaderVelocity = `
             limit += 5.0;
         }
 
-        // Attract flocks to the center
+        // Attract flocks to     center
         vec3 central = vec3(0., 0., 0.);
         dir = selfPosition - central;
         dir.z = 0.;
@@ -149,7 +149,6 @@ export const fragmentShaderVelocity = `
 // Boid Vertex Shader
 export const boidVS = `
     attribute vec2 reference;
-    attribute float boidVertex;
     
     uniform sampler2D texturePosition;
     uniform sampler2D textureVelocity;
@@ -161,11 +160,7 @@ export const boidVS = `
         vec3 pos = tmpPos.xyz;
         vec3 velocity = normalize(texture2D(textureVelocity, reference).xyz);
         
-        // Create UV coordinates for the quad
-        vUv = vec2(
-            boidVertex == 0.0 || boidVertex == 3.0 ? 0.0 : 1.0,
-            boidVertex == 0.0 || boidVertex == 1.0 ? 0.0 : 1.0
-        );
+        vUv = uv;
         
         // Rotate quad to face velocity direction
         float angle = atan(velocity.y, velocity.x) + 1.57079632679;

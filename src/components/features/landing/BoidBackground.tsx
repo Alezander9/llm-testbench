@@ -29,89 +29,47 @@ class BoidGeometry extends THREE.BufferGeometry {
   constructor() {
     super();
 
-    const trianglesPerBoid = 2;
-    const triangles = BOIDS * trianglesPerBoid;
-    const points = triangles * 3;
+    // Define a single quad (2 triangles)
+    const vertices = new Float32Array([
+      -0.5,
+      -0.5,
+      0, // bottom left
+      0.5,
+      -0.5,
+      0, // bottom right
+      0.5,
+      0.5,
+      0, // top right
+      -0.5,
+      -0.5,
+      0, // bottom left
+      0.5,
+      0.5,
+      0, // top right
+      -0.5,
+      0.5,
+      0, // top left
+    ]);
 
-    const vertices = new THREE.BufferAttribute(new Float32Array(points * 3), 3);
-    const boidColors = new THREE.BufferAttribute(
-      new Float32Array(points * 3),
-      3,
+    // UV coordinates for the quad
+    const uvs = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1]);
+
+    // Create instance references (one per boid)
+    const references = new Float32Array(BOIDS * 2);
+    for (let i = 0; i < BOIDS; i++) {
+      const x = (i % WIDTH) / WIDTH;
+      const y = ~~(i / WIDTH) / WIDTH;
+      references[i * 2] = x;
+      references[i * 2 + 1] = y;
+    }
+
+    // Set attributes
+    this.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+    this.setAttribute("uv", new THREE.BufferAttribute(uvs, 2)); // This uses Three.js's built-in UV attribute
+    this.setAttribute(
+      "reference",
+      new THREE.InstancedBufferAttribute(references, 2),
     );
-    const references = new THREE.BufferAttribute(
-      new Float32Array(points * 2),
-      2,
-    );
-    const boidVertex = new THREE.BufferAttribute(new Float32Array(points), 1);
-
-    this.setAttribute("position", vertices);
-    this.setAttribute("boidColor", boidColors);
-    this.setAttribute("reference", references);
-    this.setAttribute("boidVertex", boidVertex);
-
-    let v = 0;
-
-    function verts_push(...args: number[]) {
-      for (let i = 0; i < args.length; i++) {
-        vertices.array[v++] = args[i];
-      }
-    }
-
-    for (let f = 0; f < BOIDS; f++) {
-      // Triangle 1 of quad
-      verts_push(
-        -0.5,
-        -0.5,
-        0, // bottom left
-        0.5,
-        -0.5,
-        0, // bottom right
-        0.5,
-        0.5,
-        0,
-      ); // top right
-
-      // Triangle 2 of quad
-      verts_push(
-        -0.5,
-        -0.5,
-        0, // bottom left
-        0.5,
-        0.5,
-        0, // top right
-        -0.5,
-        0.5,
-        0,
-      ); // top left
-    }
-
-    for (let v = 0; v < triangles * 3; v++) {
-      const triangleIndex = ~~(v / 3);
-      const boidIndex = ~~(triangleIndex / trianglesPerBoid);
-      const x = (boidIndex % WIDTH) / WIDTH;
-      const y = ~~(boidIndex / WIDTH) / WIDTH;
-
-      const c = new THREE.Color(0x666666 + (~~(v / 9) / BOIDS) * 0x666666);
-
-      boidColors.array[v * 3 + 0] = c.r;
-      boidColors.array[v * 3 + 1] = c.g;
-      boidColors.array[v * 3 + 2] = c.b;
-
-      references.array[v * 2] = x;
-      references.array[v * 2 + 1] = y;
-
-      // Add UV coordinates for the texture
-      const isSecondTri = triangleIndex % 2;
-      const vertexInTri = v % 3;
-
-      if (!isSecondTri) {
-        // First triangle: bottom-left, bottom-right, top-right
-        boidVertex.array[v] = vertexInTri === 0 ? 0 : vertexInTri === 1 ? 1 : 2;
-      } else {
-        // Second triangle: bottom-left, top-right, top-left
-        boidVertex.array[v] = vertexInTri === 0 ? 0 : vertexInTri === 1 ? 2 : 3;
-      }
-    }
 
     this.scale(10, 10, 1);
   }
@@ -344,7 +302,9 @@ export default function BoidBackground({
         depthWrite: false,
       });
 
-      const boidMesh = new THREE.Mesh(geometry, material);
+      // Create instanced mesh instead of regular mesh
+      const boidMesh = new THREE.InstancedMesh(geometry, material, BOIDS);
+      boidMesh.frustumCulled = false; // Disable frustum culling since we handle positions in shader
       boidMesh.rotation.y = Math.PI / 2;
       boidMesh.matrixAutoUpdate = false;
       boidMesh.updateMatrix();
