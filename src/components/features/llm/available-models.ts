@@ -33,11 +33,11 @@ export const AVAILABLE_MODELS = {
   "deepseek-chat": {
     displayName: "DeepSeek Chat V3",
     // non-discounted prices:
-    // inputCost: convertToCreditsPerToken(0.27),  // $0.27 per 1M input tokens (cache miss)
-    // outputCost: convertToCreditsPerToken(1.10), // $1.10 per 1M output tokens
+    inputCost: convertToCreditsPerToken(0.27),  // $0.27 per 1M input tokens (cache miss)
+    outputCost: convertToCreditsPerToken(1.10), // $1.10 per 1M output tokens
     // discounted prices (effective until 2025-02-08):
-    inputCost: convertToCreditsPerToken(0.27), // $0.27 per 1M input tokens (cache miss)
-    outputCost: convertToCreditsPerToken(1.1), // $1.10 per 1M output tokens
+    // inputCost: convertToCreditsPerToken(0.27), // $0.27 per 1M input tokens (cache miss)
+    // outputCost: convertToCreditsPerToken(1.1), // $1.10 per 1M output tokens
   },
   "deepseek-reason": {
     displayName: "DeepSeek R1",
