@@ -33,8 +33,8 @@ export const AVAILABLE_MODELS = {
   "deepseek-chat": {
     displayName: "DeepSeek Chat V3",
     // non-discounted prices:
-    inputCost: convertToCreditsPerToken(0.27),  // $0.27 per 1M input tokens (cache miss)
-    outputCost: convertToCreditsPerToken(1.10), // $1.10 per 1M output tokens
+    inputCost: convertToCreditsPerToken(0.27), // $0.27 per 1M input tokens (cache miss)
+    outputCost: convertToCreditsPerToken(1.1), // $1.10 per 1M output tokens
     // discounted prices (effective until 2025-02-08):
     // inputCost: convertToCreditsPerToken(0.27), // $0.27 per 1M input tokens (cache miss)
     // outputCost: convertToCreditsPerToken(1.1), // $1.10 per 1M output tokens
@@ -43,6 +43,12 @@ export const AVAILABLE_MODELS = {
     displayName: "DeepSeek R1",
     inputCost: convertToCreditsPerToken(0.55), // $0.55 per 1M input tokens (cache miss)
     outputCost: convertToCreditsPerToken(2.19), // $2.19 per 1M output tokens
+  },
+  "claude-3-7-sonnet-latest": {
+    displayName: "Claude 3.7 Sonnet",
+    // Not including batch API discount
+    inputCost: convertToCreditsPerToken(3.0), // $3.00 per 1M input tokens
+    outputCost: convertToCreditsPerToken(15.0), // $15.00 per 1M output tokens
   },
   "claude-3-5-sonnet-latest": {
     displayName: "Claude 3.5 Sonnet",
