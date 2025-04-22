@@ -13,11 +13,18 @@ export const AVAILABLE_MODELS = {
     inputCost: convertToCreditsPerToken(2.5), // $2.50 per 1M input tokens
     outputCost: convertToCreditsPerToken(10.0), // $10.00 per 1M output tokens
   },
+  "gpt-4.1": {
+    displayName: "GPT-4.1",
+    // Assume cahce miss
+    inputCost: convertToCreditsPerToken(2), // $2.00 per 1M input tokens
+    outputCost: convertToCreditsPerToken(8.0), // $8.00 per 1M output tokens
+  },
   "gpt-4o-mini": {
     displayName: "GPT-4o Mini",
     inputCost: convertToCreditsPerToken(0.15), // $0.150 per 1M input tokens
     outputCost: convertToCreditsPerToken(0.6), // $0.600 per 1M output tokens
   },
+
   // o1 model does not allow access at my usage tier yet
   // "o1": {
   //   displayName: "GPT o1",
