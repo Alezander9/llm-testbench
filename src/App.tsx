@@ -1,8 +1,12 @@
+import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { Toaster } from "./components/ui/toaster";
 import Home from "./pages/Home";
 import Landing from "./pages/Landing";
+
+// Lazy load the Slides component
+const Slides = React.lazy(() => import("./slides"));
 
 function LoadingState() {
   return (
@@ -24,6 +28,14 @@ function App() {
             <RequireAuth>
               <Home />
             </RequireAuth>
+          }
+        />
+        <Route
+          path="/slides/*"
+          element={
+            <React.Suspense fallback={<LoadingState />}>
+              <Slides />
+            </React.Suspense>
           }
         />
       </Routes>
