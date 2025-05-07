@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
-import PlaceholderSlide from "../templates/PlaceholderSlide";
 import TitleSlide from "../templates/TitleSlide";
 import TableOfContentsSlide from "../templates/TableOfContentsSlide";
 import HowLLMsGenerateTextSlide from "./slides/HowLLMsGenerateTextSlide";
 import BackpropagationAnalogySlide from "./slides/BackpropagationAnalogySlide";
 import ComplexityAndScaleSlide from "./slides/ComplexityAndScaleSlide";
+import HowPredictionLeadsToInstructionSlide from "./slides/HowPredictionLeadsToInstructionSlide";
+import WhatLLMsAreGoodAtSlide from "./slides/WhatLLMsAreGoodAtSlide";
+import WhatLLMsAreBadAtSlide from "./slides/WhatLLMsAreBadAtSlide";
+import UseSystemPromptSlide from "./slides/UseSystemPromptSlide";
 import { Button } from "../../components/ui/button";
 
 // Define the outline items
@@ -17,12 +20,21 @@ const outlineItems = [
 
 // Define your slides here
 const lectureSlides = [
-  () => <TitleSlide title="Prompt Engineering: Tips and Tricks" subtitle="Presented by Alexander Yue" />,
+  () => (
+    <TitleSlide
+      title="Prompt Engineering: Tips and Tricks"
+      subtitle="Presented by Alexander Yue"
+    />
+  ),
   () => <TableOfContentsSlide items={outlineItems} currentItemIndex={0} />,
   () => <HowLLMsGenerateTextSlide />,
   () => <BackpropagationAnalogySlide />,
   () => <ComplexityAndScaleSlide />,
+  () => <HowPredictionLeadsToInstructionSlide />,
+  () => <WhatLLMsAreGoodAtSlide />,
+  () => <WhatLLMsAreBadAtSlide />,
   () => <TableOfContentsSlide items={outlineItems} currentItemIndex={1} />,
+  () => <UseSystemPromptSlide />,
   () => <TableOfContentsSlide items={outlineItems} currentItemIndex={2} />,
   () => <TableOfContentsSlide items={outlineItems} currentItemIndex={3} />,
 ];
@@ -34,7 +46,7 @@ function PromptEngineeringLecture() {
 
   const goToNextSlide = useCallback(() => {
     setCurrentSlideIndex((prevIndex) =>
-      Math.min(prevIndex + 1, lectureSlides.length - 1)
+      Math.min(prevIndex + 1, lectureSlides.length - 1),
     );
   }, []);
 
@@ -76,7 +88,10 @@ function PromptEngineeringLecture() {
   const isLastSlide = currentSlideIndex === lectureSlides.length - 1;
 
   return (
-    <div className="p-4 min-h-screen flex flex-col bg-background text-foreground" tabIndex={0}>
+    <div
+      className="p-4 min-h-screen flex flex-col bg-background text-foreground"
+      tabIndex={0}
+    >
       <div className="flex-1 border rounded mb-4 overflow-hidden">
         <SlideComponent />
       </div>
@@ -105,4 +120,4 @@ function PromptEngineeringLecture() {
   );
 }
 
-export default PromptEngineeringLecture; 
+export default PromptEngineeringLecture;
