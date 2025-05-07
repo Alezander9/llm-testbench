@@ -8,6 +8,13 @@ import HowPredictionLeadsToInstructionSlide from "./slides/HowPredictionLeadsToI
 import WhatLLMsAreGoodAtSlide from "./slides/WhatLLMsAreGoodAtSlide";
 import WhatLLMsAreBadAtSlide from "./slides/WhatLLMsAreBadAtSlide";
 import UseSystemPromptSlide from "./slides/UseSystemPromptSlide";
+import ReasoningSpaceSlide from "./slides/ReasoningSpaceSlide";
+import UseTagsSlide from "./slides/UseTagsSlide";
+import AddExamplesSlide from "./slides/AddExamplesSlide";
+import TestALotSlide from "./slides/TestALotSlide";
+import WhatIsAnAgentSlide from "./slides/WhatIsAnAgentSlide";
+import StructuredOutputAgentSlide from "./slides/StructuredOutputAgentSlide";
+import AgentResourcesSlide from "./slides/AgentResourcesSlide";
 import { Button } from "../../components/ui/button";
 
 // Define the outline items
@@ -35,7 +42,14 @@ const lectureSlides = [
   () => <WhatLLMsAreBadAtSlide />,
   () => <TableOfContentsSlide items={outlineItems} currentItemIndex={1} />,
   () => <UseSystemPromptSlide />,
+  () => <ReasoningSpaceSlide />,
+  () => <UseTagsSlide />,
+  () => <AddExamplesSlide />,
+  () => <TestALotSlide />,
   () => <TableOfContentsSlide items={outlineItems} currentItemIndex={2} />,
+  () => <WhatIsAnAgentSlide />,
+  () => <StructuredOutputAgentSlide />,
+  () => <AgentResourcesSlide />,
   () => <TableOfContentsSlide items={outlineItems} currentItemIndex={3} />,
 ];
 

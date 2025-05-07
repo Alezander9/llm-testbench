@@ -7,8 +7,7 @@ const title = "How does backpropagation work?";
 const items = [
   "Imagine you are the head chef at a restaurant. You have a team of sous-chefs helping you and those sous-chefs have sous-chefs and so on",
   "Lets say an order comes up for a bowl of ramen, but as your sous-chefs give you noodles that are too short and broth that is too salty",
-  "You are going to go to each of those sous-chefs and say \"Hey I'm trying to make a good ramen but I can't because your broth is too salty, your noodles are too short\"",
-  "They will remember your feedback, but they will also go to their sous-chefs and complain too",
+  "You are going to go to each of those sous-chefs and tell them what you wanted. They will remember your feedback, but they will also go to their sous-chefs and complain too\n",
   "And so over time the huge system of chefs will get better and better at cooking, even if each chef knows nothing about cooking to begin, and each chef only does one tiny operation"
 ];
 
