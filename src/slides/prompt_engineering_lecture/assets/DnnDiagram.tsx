@@ -45,7 +45,7 @@ const Layer: React.FC<LayerProps> = ({ layerIndex, nodeCount, totalLayers, maxNo
 
   // Calculate vertical center offset for this layer
   const layerHeight = nodeCount * NODE_SPACING_V;
-  const maxLayerHeight = maxNodesInAnyLayer * NODE_SPACING_V;
+  const _maxLayerHeight = maxNodesInAnyLayer * NODE_SPACING_V;
   const startY = (svgHeight - layerHeight) / 2 + NODE_SPACING_V / 2 - NODE_RADIUS / 2;
 
   const nodes = Array.from({ length: nodeCount }).map((_, nodeIndex) => {

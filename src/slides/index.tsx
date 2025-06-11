@@ -1,4 +1,3 @@
-import React from "react";
 import PromptEngineeringLecture from "./prompt_engineering_lecture";
 
 function Slides() {

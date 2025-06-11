@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import TitleSlide from "../templates/TitleSlide";
 import TableOfContentsSlide from "../templates/TableOfContentsSlide";
 import HowLLMsGenerateTextSlide from "./slides/HowLLMsGenerateTextSlide";
